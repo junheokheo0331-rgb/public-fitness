@@ -1,0 +1,13 @@
+{
+  "name": "gymlink",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "dev": "npm run dev -w @gymlink/web",
+    "build": "npm run build -w @gymlink/web",
+    "preview": "npm run preview -w @gymlink/web",
+    "test": "node packages/core/scripts/test.mjs"
+  }
+}

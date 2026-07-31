@@ -41,23 +41,17 @@ export default function MemberHome() {
       <p className="home-q">무엇을 도와드릴까요?</p>
 
       <div className="svc">
-        <button type="button" className="svc__card" onClick={() => nav('/pt/new')}>
+        <button type="button" className="svc__card" onClick={() => nav('/find')}>
           <span className="svc__badge">추천</span>
-          <strong className="svc__title">PT 받기</strong>
-          <span className="svc__desc">신청하면 트레이너가<br />제안서를 보내요</span>
+          <strong className="svc__title">트레이너 찾기</strong>
+          <span className="svc__desc">재활·보디빌딩 등<br />분야로 골라요</span>
           <span className="svc__art" aria-hidden="true">PT</span>
         </button>
-        <button
-          type="button"
-          className="svc__card"
-          onClick={() => {
-            document.getElementById('nearby-gyms')?.scrollIntoView({ behavior: 'smooth' });
-          }}
-        >
-          <span className="svc__badge svc__badge--sky">찾기</span>
-          <strong className="svc__title">헬스장 찾기</strong>
-          <span className="svc__desc">이 지역 기구·거리<br />기준으로 비교</span>
-          <span className="svc__art svc__art--dim" aria-hidden="true">GYM</span>
+        <button type="button" className="svc__card" onClick={() => nav('/pt/new')}>
+          <span className="svc__badge svc__badge--sky">신청</span>
+          <strong className="svc__title">PT 신청</strong>
+          <span className="svc__desc">올리면 트레이너가<br />제안서를 보내요</span>
+          <span className="svc__art svc__art--dim" aria-hidden="true">ASK</span>
         </button>
       </div>
 

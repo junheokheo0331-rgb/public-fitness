@@ -19,6 +19,17 @@ export default function TrainerHome() {
       <Card>
         <div className="row row--between" style={{ alignItems: 'center' }}>
           <div>
+            <p className="eyebrow">프로필</p>
+            <p className="card__title" style={{ fontSize: 16 }}>이력 · 포트폴리오</p>
+            <p className="card__note">회원에게 보이는 소개를 수정하세요</p>
+          </div>
+          <Link className="btn btn--sm" to="/t/profile">편집</Link>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="row row--between" style={{ alignItems: 'center' }}>
+          <div>
             <p className="eyebrow">역경매</p>
             <p className="card__title" style={{ fontSize: 16 }}>근처 PT 요청 보기</p>
             <p className="card__note">회원이 올리면 이력서로 지원하세요</p>

@@ -11,6 +11,7 @@
 import { createClient } from '@supabase/supabase-js';
 import * as M from './mock.js';
 import { MACHINES, availableFor, machineImpact as mockImpact } from './catalog.js';
+import { statsFromSession } from '@gymlink/core/progress';
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -94,10 +95,16 @@ export async function saveRoutine({ gymId, title, body, goal, level, days, routi
   if (!sb) {
     await wait(200);
     const id = routineId ?? `r-${Date.now()}`;
-    const row = { id, gym_id: gymId, title, days, goal, origin,
-                  updated: new Date().toISOString().slice(0, 10) };
+    const row = {
+      id, gym_id: gymId, title, days, goal, level, origin, body: body ?? null,
+      updated: new Date().toISOString().slice(0, 10),
+    };
     const i = M.SAVED_ROUTINES.findIndex((r) => r.id === routineId);
-    if (i >= 0) M.SAVED_ROUTINES[i] = row; else M.SAVED_ROUTINES.unshift(row);
+    if (i >= 0) {
+      M.SAVED_ROUTINES[i] = { ...M.SAVED_ROUTINES[i], ...row, note: M.SAVED_ROUTINES[i].note };
+    } else {
+      M.SAVED_ROUTINES.unshift(row);
+    }
     return id;
   }
   const { data, error } = await sb.rpc('save_routine', {
@@ -106,6 +113,17 @@ export async function saveRoutine({ gymId, title, body, goal, level, days, routi
     p_routine_id: routineId ?? null, p_origin: origin,
   });
   if (error) throw error;
+  return data;
+}
+
+export async function getSavedRoutine(routineId) {
+  if (!sb) {
+    await wait();
+    return M.SAVED_ROUTINES.find((r) => r.id === routineId)
+      || M.TRAINER_ROUTINES.find((r) => r.id === routineId)
+      || null;
+  }
+  const { data } = await sb.from('routines').select('*').eq('id', routineId).maybeSingle();
   return data;
 }
 
@@ -124,9 +142,9 @@ export async function getTrainerRoutine(routineId) {
   return null;
 }
 
-/** 트레이너 보관함 루틴 저장(추가·수정). 기구 기준 엔진으로 body 를 다시 짠다. */
+/** 트레이너 보관함 루틴 저장(추가·수정). body 를 함께 저장한다. */
 export async function saveTrainerRoutine({
-  gymId = 'g-1', title, goal = 'hypertrophy', level = 2, days = 3, routineId,
+  gymId = 'g-1', title, goal = 'hypertrophy', level = 2, days = 3, routineId, body,
 }) {
   if (!sb) {
     await wait(200);
@@ -134,10 +152,11 @@ export async function saveTrainerRoutine({
     const row = {
       id, gym_id: gymId, title, days: Number(days) || 3,
       goal, level: Number(level) || 2, origin: 'trainer',
+      body: body ?? null,
       updated: new Date().toISOString().slice(0, 10),
     };
     const i = M.TRAINER_ROUTINES.findIndex((r) => r.id === id);
-    if (i >= 0) M.TRAINER_ROUTINES[i] = row;
+    if (i >= 0) M.TRAINER_ROUTINES[i] = { ...M.TRAINER_ROUTINES[i], ...row };
     else M.TRAINER_ROUTINES.unshift(row);
     return id;
   }
@@ -179,6 +198,7 @@ export async function assignRoutine({ memberId, routineId, note, dueDate }) {
       title,
       note: note || null,
       due: dueDate || null,
+      body: src.body ? JSON.parse(JSON.stringify(src.body)) : null,
       updated: new Date().toISOString().slice(0, 10),
     };
     M.SAVED_ROUTINES.unshift(copy);
@@ -405,6 +425,82 @@ export async function myTrainerProfile() {
   return null;
 }
 
+export async function listSpecialtyTags() {
+  if (!sb) { await wait(20); return [...M.SPECIALTY_TAGS]; }
+  return [];
+}
+
+/** 헬스장 소속 트레이너 */
+export async function listTrainersByGym(gymId) {
+  if (!sb) {
+    await wait();
+    return M.TRAINERS
+      .filter((t) => t.gym_id === gymId && t.accepts_new !== false)
+      .sort((a, b) => b.rating_avg - a.rating_avg);
+  }
+  return [];
+}
+
+/**
+ * 동네 트레이너·헬스장 검색.
+ * specialties 가 있으면 해당 분야 트레이너가 있는 헬스장만.
+ */
+export async function searchTrainersAndGyms({ specialties = [], areaId } = {}) {
+  if (!sb) {
+    await wait();
+    const aid = areaId ?? M.LOCATION.areaId;
+    const tags = specialties.filter(Boolean);
+    let trainers = M.TRAINERS.filter((t) => t.accepts_new !== false);
+    if (tags.length) {
+      trainers = trainers.filter((t) =>
+        tags.some((tag) => (t.specialties || []).includes(tag)),
+      );
+    }
+    trainers = trainers
+      .map((t) => ({
+        ...t,
+        distance_m: t.area_id === aid ? t.distance_m : t.distance_m + 2000,
+      }))
+      .sort((a, b) => a.distance_m - b.distance_m);
+
+    const gymIds = [...new Set(trainers.map((t) => t.gym_id))];
+    const gyms = M.GYMS
+      .filter((g) => gymIds.includes(g.id))
+      .map((g) => {
+        const ts = trainers.filter((t) => t.gym_id === g.id);
+        return {
+          ...g,
+          distance_m: Math.min(...ts.map((t) => t.distance_m)),
+          matching_trainers: ts,
+          specialty_match: tags,
+        };
+      })
+      .sort((a, b) => a.distance_m - b.distance_m);
+
+    return { trainers, gyms, tags };
+  }
+  return { trainers: [], gyms: [], tags: [] };
+}
+
+/** 트레이너가 본인 이력·포트폴리오 수정 */
+export async function updateTrainerProfile(patch) {
+  if (!sb) {
+    await wait(180);
+    const me = M.TRAINERS.find((t) => t.id === 'u-trainer');
+    if (!me) throw new Error('프로필 없음');
+    Object.assign(me, {
+      ...patch,
+      specialties: patch.specialties ? [...patch.specialties] : me.specialties,
+      certs: patch.certs ? [...patch.certs] : me.certs,
+      portfolio: patch.portfolio
+        ? patch.portfolio.map((p) => ({ ...p }))
+        : me.portfolio,
+    });
+    return { ...me };
+  }
+  return null;
+}
+
 /** 회원: 내 PT 요청 목록 */
 export async function myPtRequests() {
   if (!sb) {
@@ -563,4 +659,77 @@ export async function selectPtApplication(requestId, applicationId) {
     return { request: req, application: app, trainer };
   }
   return null;
+}
+
+/* ---------- 운동 기록 (workoutapp 세션 로그 이식) ---------- */
+
+export async function getExerciseStats() {
+  if (!sb) { await wait(40); return { ...M.EXERCISE_STATS }; }
+  return {};
+}
+
+export async function lastSetsForExercise(exerciseCode) {
+  if (!sb) {
+    await wait(40);
+    const dates = Object.keys(M.WORKOUT_LOGS).sort().reverse();
+    for (const d of dates) {
+      const day = M.WORKOUT_LOGS[d];
+      for (const sess of [...(day.sessions || [])].reverse()) {
+        const ex = (sess.exercises || []).find(
+          (e) => e.code === exerciseCode || e.exercise_code === exerciseCode,
+        );
+        if (ex?.sets?.some((s) => s.done && +s.w > 0)) return ex.sets;
+      }
+    }
+    return null;
+  }
+  return null;
+}
+
+export async function saveWorkoutSession({
+  dateStr, sessionId, routineId, dayIndex, exercises, ended,
+}) {
+  if (!sb) {
+    await wait(150);
+    const date = dateStr || new Date().toISOString().slice(0, 10);
+    if (!M.WORKOUT_LOGS[date]) M.WORKOUT_LOGS[date] = { date, sessions: [] };
+    const day = M.WORKOUT_LOGS[date];
+    let sess = day.sessions.find((s) => s.id === sessionId);
+    if (!sess) {
+      sess = {
+        id: sessionId || `s${Date.now()}`,
+        routineId: routineId || null,
+        dayIndex: dayIndex ?? 0,
+        startedAt: Date.now(),
+        endedAt: null,
+        exercises: [],
+      };
+      day.sessions.push(sess);
+    }
+    sess.exercises = exercises;
+    if (ended) sess.endedAt = Date.now();
+
+    /* 스탯 갱신 — workoutapp statsFromSession */
+    const patch = statsFromSession(exercises);
+    for (const [code, st] of Object.entries(patch)) {
+      M.EXERCISE_STATS[code] = { ...(M.EXERCISE_STATS[code] || {}), ...st };
+    }
+    return sess;
+  }
+  return null;
+}
+
+export async function listWorkoutSessions(limit = 20) {
+  if (!sb) {
+    await wait();
+    const rows = [];
+    for (const date of Object.keys(M.WORKOUT_LOGS).sort().reverse()) {
+      for (const s of M.WORKOUT_LOGS[date].sessions || []) {
+        rows.push({ ...s, date });
+        if (rows.length >= limit) return rows;
+      }
+    }
+    return rows;
+  }
+  return [];
 }

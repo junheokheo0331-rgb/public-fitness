@@ -3,6 +3,10 @@
    Supabase 없이 돈다. 뭘 붙이기 전에 이걸 먼저 통과시켜라. */
 
 import { buildRoutine, e1rm, nextTarget, snapWeight } from '../src/engine/routine.js';
+import {
+  setTargets, appliedE1rm, statsFromSession,
+} from '../src/engine/progress.js';
+import { searchExerciseCatalog } from '../src/lib/exercise-catalog.js';
 import { calcRefund } from '../src/engine/refund.js';
 import { parseBodySheet, toRecord, normalize } from '../src/inbody/parse.js';
 
@@ -43,6 +47,31 @@ const est = e1rm(100, 5, 2);
 ok(`벤치 100kg×5 RIR2 → e1RM ${est}kg (115~125 범위)`, est > 115 && est < 125);
 const nx = nextTarget({ weight: 100, reps: 5, rir: 2 }, { reps: [6,10], rir: 2 }, 5);
 ok(`다음 목표 ${nx.weight}kg × ${nx.reps}회 — ${nx.note}`, nx.weight % 5 === 0);
+
+console.log('\n[4b] workoutapp 이식 — 이중 점진 · 메인 e1RM');
+const dual = setTargets(
+  { sets: 3, repLo: 8, repHi: 12, rir: 1, step: 5 },
+  { prevSets: [{ w: 50, reps: 12, done: true }, { w: 50, reps: 10, done: true }, { w: 50, reps: 9, done: true }] },
+);
+ok('1세트 상한 도달 → 증량', dual[0].kind === 'up' && dual[0].w === 55);
+ok('2세트 반복 +1', dual[1].kind === 'rep' && dual[1].reps === 11);
+
+const main = setTargets(
+  { sets: 3, repLo: 5, repHi: 6, rir: 2, step: 2.5, lift: '스쿼트' },
+  { e1rm: 150 },
+);
+ok('메인 리프트 목표가 채워진다', main[0].kind === 'main' && main[0].w > 0);
+
+const capped = appliedE1rm(100, [120]);
+ok('세션당 상승 상한 약 2.5%', capped <= 103 && capped >= 102);
+
+const hit = searchExerciseCatalog('스쿼트', 3);
+ok('카탈로그에서 스쿼트 검색', hit.some((c) => c.name.includes('스쿼트')));
+
+const stMap = statsFromSession([
+  { code: 'BENCH', sets: [{ w: 80, reps: 5, rir: 2, done: true }] },
+]);
+ok('세션에서 e1RM 스탯 추출', stMap.BENCH?.e1rm > 80);
 
 console.log('\n[5] 환불 계산 — 기간제');
 const f1 = calcRefund({ amount: 600000, serviceFrom: '2026-01-01', serviceTo: '2026-06-30', asOf: '2026-02-01' });

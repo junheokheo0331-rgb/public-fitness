@@ -6,7 +6,7 @@ import { useSession } from '../lib/session.jsx';
 const TABS = {
   member: [
     { to: '/',        glyph: '◎', label: '홈' },
-    { to: '/pt',      glyph: '▣', label: 'PT 신청' },
+    { to: '/find',    glyph: '▣', label: '찾기' },
     { to: '/my',      glyph: '▤', label: '내 헬스장' },
     { to: '/me',      glyph: '◇', label: '내 정보' },
   ],
@@ -14,7 +14,7 @@ const TABS = {
     { to: '/t',           glyph: '◎', label: '오늘' },
     { to: '/t/requests',  glyph: '▣', label: 'PT 요청' },
     { to: '/t/clients',   glyph: '▤', label: '담당 회원' },
-    { to: '/me',          glyph: '◇', label: '내 정보' },
+    { to: '/t/profile',   glyph: '◇', label: '프로필' },
   ],
   owner: [
     { to: '/o',          glyph: '◎', label: '현황' },

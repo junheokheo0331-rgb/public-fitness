@@ -1,31 +1,29 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { buildRoutine } from '@gymlink/core/routine';
 import { TopBar, Card, Chip, Note, Plate, won } from '../../ui/bits.jsx';
-import { getGym, availableExercises, machineCatalog, gymPhotos } from '../../lib/api.js';
-
-/* 등록하기 전에 루틴을 먼저 보여준다.
-
-   다짐을 비롯한 기존 서비스는 가격과 사진까지 보여준다. 거기서
-   더 갈 수 있는 곳은 "여기 등록하면 내가 뭘 하게 되는가"다.
-   보유 기구가 입력이니 등록 전에도 계산할 수 있다. */
+import {
+  getGym, availableExercises, machineCatalog, gymPhotos, listTrainersByGym,
+} from '../../lib/api.js';
 
 export default function GymDetail() {
   const { gymId } = useParams();
   const [gym, setGym] = useState(null);
   const [preview, setPreview] = useState(null);
   const [photos, setPhotos] = useState([]);
+  const [trainers, setTrainers] = useState(null);
   const catalog = machineCatalog();
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [g, ex, ph] = await Promise.all([
-        getGym(gymId), availableExercises(gymId), gymPhotos(gymId),
+      const [g, ex, ph, tr] = await Promise.all([
+        getGym(gymId), availableExercises(gymId), gymPhotos(gymId), listTrainersByGym(gymId),
       ]);
       if (!alive) return;
       setGym(g);
       setPhotos(ph);
+      setTrainers(tr);
       setPreview(buildRoutine({ available: ex, daysPerWeek: 3, goal: 'hypertrophy', level: 1 }));
     })();
     return () => { alive = false; };
@@ -66,6 +64,34 @@ export default function GymDetail() {
         </div>
       </Card>
 
+      <Card title="소속 트레이너" note="이력·포트폴리오를 확인할 수 있어요" flush>
+        {!trainers && <p className="muted small" style={{ padding: 16 }}>불러오는 중…</p>}
+        {trainers?.length === 0 && (
+          <p className="muted small" style={{ padding: 16 }}>공개 중인 트레이너가 없습니다.</p>
+        )}
+        <ul className="list">
+          {trainers?.map((t) => (
+            <li key={t.id}>
+              <Link className="list__item" to={`/trainers/${t.id}`}>
+                <div className="list__body">
+                  <div className="list__title">{t.name}</div>
+                  <div className="list__meta">{t.headline}</div>
+                  <div className="row row--wrap" style={{ gap: 4, marginTop: 4 }}>
+                    {(t.specialties || []).slice(0, 3).map((s) => (
+                      <Chip key={s} kind="sub">{s}</Chip>
+                    ))}
+                  </div>
+                </div>
+                <div className="list__right">
+                  <div>★ {t.rating_avg}</div>
+                  <div className="tiny">{won(t.price_per_session)}/회</div>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Card>
+
       <Card title="이 헬스장 기구로 짜면" note="주 3회 · 근비대 · 초보 기준">
         {preview?.days.map((d) => (
           <div key={d.day_index} style={{ marginBottom: 12 }}>
@@ -82,11 +108,6 @@ export default function GymDetail() {
             </div>
           </div>
         ))}
-
-        <p className="tiny muted" style={{ marginTop: 4 }}>
-          노란 배지는 케이블·프리웨이트 종목입니다. 세팅을 바꿔 얼마든지 변형할 수 있습니다.
-        </p>
-
         {preview?.warnings.length > 0 && (
           <Note kind="volt" title="이 헬스장에서 못 하는 것">
             {preview.warnings.map((w, i) => <p key={i}>{w}</p>)}
@@ -119,12 +140,6 @@ export default function GymDetail() {
             </li>
           ))}
         </ul>
-        <Note>
-          <p className="small">
-            등록 후 해지하면 이용한 기간을 뺀 금액에서 총액의 10%를 공제하고 돌려받습니다.
-            앱이 그 금액을 계산해 드립니다.
-          </p>
-        </Note>
       </Card>
     </>
   );

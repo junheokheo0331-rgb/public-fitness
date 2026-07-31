@@ -111,6 +111,17 @@ export const HOMEWORK_LOG = [
   },
 ];
 
+/* 운동 세션 로그 — workoutapp logs 이식 형태
+   { [date]: { date, sessions:[{ id, routineId, dayIndex, startedAt, endedAt, exercises:[{code,name,sets:[{w,reps,rir,done}]}] }] } } */
+export const WORKOUT_LOGS = {};
+
+/* 종목별 누적 스탯 (자동조절 입력) */
+export const EXERCISE_STATS = {
+  LEG_PRESS_EX: { e1rm: 180, best_weight: 140, best_reps: 8 },
+  SMITH_BENCH: { e1rm: 95, best_weight: 70, best_reps: 6 },
+  LAT_PULLDOWN_W: { e1rm: 70, best_weight: 50, best_reps: 10 },
+};
+
 /* ---------- 체성분 기록 ---------- */
 export const BODY_LOG = [
   { id:'b-3', measured_at:'2026-07-12', source:'photo_ocr', weight_kg:72.4, skeletal_muscle_kg:33.1, body_fat_pct:20.0, verified:true },
@@ -144,47 +155,86 @@ export const AREAS = [
 
 export const LOCATION = { areaId: 'b-seomyeon' };
 
-/* ---------- 트레이너 이력서(공개 프로필) ---------- */
+/* 트레이너 분야 태그 — 찾기 필터·프로필 토글 공통 */
+export const SPECIALTY_TAGS = [
+  '재활', '보디빌딩', '다이어트', '입문', '스트렝스',
+  '자세교정', '시니어', '여성', '선수출신', '체형', '근비대',
+];
+
+/* ---------- 트레이너 이력서 + 포트폴리오 ---------- */
 export const TRAINERS = [
   {
     id: 'u-trainer', name: '박서연', gym_id: 'g-1', gym_name: '서면 스트렝스짐',
     area_id: 'b-seomyeon', distance_m: 320,
     headline: '근비대 · 자세교정 6년',
     bio: '서면에서 6년째. 무릎·어깨 아픈 분 많이 봐왔어요. 무리한 중량보다 폼 먼저.',
-    specialties: ['근비대', '자세교정', '하체'],
+    specialties: ['근비대', '자세교정', '재활'],
     years: 6, rating_avg: 4.9, review_count: 128, sessions_done: 2100,
     certs: ['NSCA-CPT', '생활스포츠지도사 2급'],
     price_per_session: 65000, accepts_new: true,
+    portfolio: [
+      { id: 'pf1', kind: 'career', year: '2020–', title: '서면 스트렝스짐 전임', detail: '재활·자세교정 PT 담당' },
+      { id: 'pf2', kind: 'cert', year: '2019', title: 'NSCA-CPT', detail: '미국 공인 퍼스널트레이너' },
+      { id: 'pf3', kind: 'result', year: '2025', title: '무릎 재활 후 스쿼트 복귀', detail: '회원 사례 · 12주 프로그램' },
+      { id: 'pf4', kind: 'media', year: '2024', title: '폼 교정 영상 시리즈', detail: '스쿼트·힌지 큐잉 가이드' },
+    ],
   },
   {
     id: 'tr-2', name: '강민호', gym_id: 'g-1', gym_name: '서면 스트렝스짐',
     area_id: 'b-seomyeon', distance_m: 410,
-    headline: '다이어트 · 체형관리',
+    headline: '다이어트 · 보디빌딩',
     bio: '감량 후 요요 막는 루틴이 강점. 식단은 강요하지 않고 현실적으로 잡습니다.',
-    specialties: ['감량', '체형'],
+    specialties: ['다이어트', '보디빌딩', '체형'],
     years: 4, rating_avg: 4.7, review_count: 86, sessions_done: 980,
     certs: ['KATA 자격'],
     price_per_session: 55000, accepts_new: true,
+    portfolio: [
+      { id: 'pf5', kind: 'career', year: '2022–', title: '서면 스트렝스짐', detail: '다이어트·체형 PT' },
+      { id: 'pf6', kind: 'result', year: '2025', title: '12주 −8kg 유지', detail: '요요 없이 체지방만 감량' },
+    ],
   },
   {
     id: 'tr-3', name: '윤지아', gym_id: 'g-2', gym_name: '전포 헬스클럽',
     area_id: 'b-jeonpo', distance_m: 780,
     headline: '여성 · 입문 전문',
     bio: '헬스장 처음이어도 괜찮아요. 기구 사용법부터 천천히.',
-    specialties: ['입문', '여성'],
+    specialties: ['입문', '여성', '체형'],
     years: 3, rating_avg: 4.8, review_count: 64, sessions_done: 540,
     certs: ['생활스포츠지도사 2급'],
     price_per_session: 50000, accepts_new: true,
+    portfolio: [
+      { id: 'pf7', kind: 'career', year: '2023–', title: '전포 헬스클럽', detail: '여성·입문반' },
+      { id: 'pf8', kind: 'cert', year: '2022', title: '생활스포츠지도사 2급', detail: '' },
+    ],
   },
   {
     id: 'tr-4', name: '한도윤', gym_id: 'g-3', gym_name: '해운대 바디랩',
     area_id: 'b-haeundae', distance_m: 4500,
-    headline: '스트렝스 · 파워리프팅',
+    headline: '스트렝스 · 보디빌딩',
     bio: '스쿼트·데드 폼 잡는 데 집중. 대회 준비도 가능.',
-    specialties: ['스트렝스', '파워리프팅'],
+    specialties: ['스트렝스', '보디빌딩', '선수출신'],
     years: 8, rating_avg: 4.9, review_count: 201, sessions_done: 3200,
     certs: ['NSCA-CSCS'],
     price_per_session: 80000, accepts_new: true,
+    portfolio: [
+      { id: 'pf9', kind: 'career', year: '2018–', title: '해운대 바디랩 헤드', detail: '스트렝스·대회 준비' },
+      { id: 'pf10', kind: 'result', year: '2024', title: '파워리프팅 지역 대회 지도', detail: '입상 회원 3명' },
+      { id: 'pf11', kind: 'cert', year: '2017', title: 'NSCA-CSCS', detail: '' },
+    ],
+  },
+  {
+    id: 'tr-5', name: '조예린', gym_id: 'g-2', gym_name: '전포 헬스클럽',
+    area_id: 'b-jeonpo', distance_m: 850,
+    headline: '재활 · 시니어',
+    bio: '수술 후·만성 통증 있는 분 위주. 정형외과 연계 경험.',
+    specialties: ['재활', '시니어', '자세교정'],
+    years: 7, rating_avg: 4.9, review_count: 95, sessions_done: 1600,
+    certs: ['물리치료사', '생활스포츠지도사 2급'],
+    price_per_session: 70000, accepts_new: true,
+    portfolio: [
+      { id: 'pf12', kind: 'career', year: '2019–', title: '전포 헬스클럽 재활 PT', detail: '' },
+      { id: 'pf13', kind: 'cert', year: '2016', title: '물리치료사 면허', detail: '' },
+    ],
   },
 ];
 

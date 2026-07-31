@@ -439,6 +439,52 @@ button.chip {
 }
 .card--picked { box-shadow: 0 0 0 2px var(--volt), var(--shadow); }
 
+/* ---------- 운동 기록 · 루틴 편집 (workoutapp) ---------- */
+.setlog { display: grid; gap: 8px; }
+.setlog__row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto 1fr 56px 36px;
+  gap: 6px; align-items: center;
+  position: relative; padding-bottom: 18px;
+}
+.setlog__row.is-done .input { background: var(--volt-bg); border-color: #B7DBFF; }
+.setlog__idx {
+  font-family: var(--mono); font-size: 12px; color: var(--ink-3); text-align: center;
+}
+.setlog__chk {
+  width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+  background: #fff; cursor: pointer; font-weight: 800; color: var(--ink-3);
+}
+.setlog__chk.on { background: var(--volt); color: #fff; border-color: var(--volt); }
+.setlog__hint {
+  position: absolute; left: 28px; bottom: 2px;
+  font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: calc(100% - 40px);
+}
+
+.exedit {
+  padding: 12px 0; border-bottom: 1px solid var(--line-2);
+}
+.exedit:last-child { border-bottom: 0; }
+.exedit .rowfields { grid-template-columns: 1fr 1fr; }
+
+.find-tabs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  margin: 4px 0 12px; border: 1px solid var(--line);
+  border-radius: 14px; overflow: hidden; background: #fff;
+}
+.find-tabs__btn {
+  min-height: 42px; border: 0; background: transparent; cursor: pointer;
+  font-size: 13.5px; font-weight: 700; color: var(--ink-3);
+}
+.find-tabs__btn[aria-selected='true'] {
+  background: var(--volt); color: #fff;
+}
+.find-gym {
+  display: block; width: 100%; text-align: left;
+  border: 0; background: none; cursor: pointer; padding: 0;
+}
+
 /* ---------- 유틸 ---------- */
 .stack-y > * + * { margin-top: 10px; }
 .row { display: flex; align-items: center; gap: 8px; }

@@ -9,11 +9,14 @@ import MemberHome from './pages/member/Home.jsx';
 import GymDetail from './pages/member/GymDetail.jsx';
 import MyGym from './pages/member/MyGym.jsx';
 import RoutineView from './pages/member/RoutineView.jsx';
+import WorkoutSession from './pages/member/WorkoutSession.jsx';
 import Body from './pages/member/Body.jsx';
 import Refund from './pages/member/Refund.jsx';
 import PtRequestNew from './pages/member/PtRequestNew.jsx';
 import PtRequestList from './pages/member/PtRequestList.jsx';
 import PtRequestDetail from './pages/member/PtRequestDetail.jsx';
+import FindTrainers from './pages/member/FindTrainers.jsx';
+import TrainerPublic from './pages/member/TrainerPublic.jsx';
 
 import TrainerHome from './pages/trainer/Home.jsx';
 import Clients from './pages/trainer/Clients.jsx';
@@ -23,6 +26,7 @@ import SendRoutine from './pages/trainer/SendRoutine.jsx';
 import TrainerRoutineEdit from './pages/trainer/TrainerRoutineEdit.jsx';
 import RequestBoard from './pages/trainer/RequestBoard.jsx';
 import RequestApply from './pages/trainer/RequestApply.jsx';
+import TrainerProfileEdit from './pages/trainer/TrainerProfileEdit.jsx';
 
 import OwnerHome from './pages/owner/Home.jsx';
 import Machines from './pages/owner/Machines.jsx';
@@ -47,14 +51,18 @@ export default function App() {
         <Route path="/gym/:gymId" element={<GymDetail />} />
         <Route path="/my" element={<MyGym />} />
         <Route path="/my/routine/:routineId" element={<RoutineView />} />
+        <Route path="/my/routine/:routineId/workout" element={<WorkoutSession />} />
         <Route path="/body" element={<Body />} />
         <Route path="/refund" element={<Refund />} />
         <Route path="/pt" element={<PtRequestList />} />
         <Route path="/pt/new" element={<PtRequestNew />} />
         <Route path="/pt/:requestId" element={<PtRequestDetail />} />
+        <Route path="/find" element={<FindTrainers />} />
+        <Route path="/trainers/:trainerId" element={<TrainerPublic />} />
 
         {/* 트레이너 */}
         <Route path="/t" element={<TrainerHome />} />
+        <Route path="/t/profile" element={<TrainerProfileEdit />} />
         <Route path="/t/requests" element={<RequestBoard />} />
         <Route path="/t/requests/:requestId" element={<RequestApply />} />
         <Route path="/t/clients" element={<Clients />} />

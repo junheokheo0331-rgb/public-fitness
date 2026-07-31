@@ -7,9 +7,11 @@
   "exports": {
     ".": "./src/index.js",
     "./routine": "./src/engine/routine.js",
+    "./progress": "./src/engine/progress.js",
     "./refund": "./src/engine/refund.js",
     "./body": "./src/inbody/parse.js",
-    "./constants": "./src/lib/constants.js"
+    "./constants": "./src/lib/constants.js",
+    "./catalog": "./src/lib/exercise-catalog.js"
   },
   "scripts": { "test": "node scripts/test.mjs" }
 }

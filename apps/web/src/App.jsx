@@ -11,11 +11,18 @@ import MyGym from './pages/member/MyGym.jsx';
 import RoutineView from './pages/member/RoutineView.jsx';
 import Body from './pages/member/Body.jsx';
 import Refund from './pages/member/Refund.jsx';
+import PtRequestNew from './pages/member/PtRequestNew.jsx';
+import PtRequestList from './pages/member/PtRequestList.jsx';
+import PtRequestDetail from './pages/member/PtRequestDetail.jsx';
 
 import TrainerHome from './pages/trainer/Home.jsx';
 import Clients from './pages/trainer/Clients.jsx';
+import ClientDetail from './pages/trainer/ClientDetail.jsx';
 import ProxyEntry from './pages/trainer/ProxyEntry.jsx';
 import SendRoutine from './pages/trainer/SendRoutine.jsx';
+import TrainerRoutineEdit from './pages/trainer/TrainerRoutineEdit.jsx';
+import RequestBoard from './pages/trainer/RequestBoard.jsx';
+import RequestApply from './pages/trainer/RequestApply.jsx';
 
 import OwnerHome from './pages/owner/Home.jsx';
 import Machines from './pages/owner/Machines.jsx';
@@ -42,12 +49,20 @@ export default function App() {
         <Route path="/my/routine/:routineId" element={<RoutineView />} />
         <Route path="/body" element={<Body />} />
         <Route path="/refund" element={<Refund />} />
+        <Route path="/pt" element={<PtRequestList />} />
+        <Route path="/pt/new" element={<PtRequestNew />} />
+        <Route path="/pt/:requestId" element={<PtRequestDetail />} />
 
         {/* 트레이너 */}
         <Route path="/t" element={<TrainerHome />} />
+        <Route path="/t/requests" element={<RequestBoard />} />
+        <Route path="/t/requests/:requestId" element={<RequestApply />} />
         <Route path="/t/clients" element={<Clients />} />
+        <Route path="/t/clients/:memberId" element={<ClientDetail />} />
         <Route path="/t/clients/:memberId/body" element={<ProxyEntry />} />
         <Route path="/t/clients/:memberId/send" element={<SendRoutine />} />
+        <Route path="/t/routines/new" element={<TrainerRoutineEdit />} />
+        <Route path="/t/routines/:routineId" element={<TrainerRoutineEdit />} />
 
         {/* 관장 */}
         <Route path="/o" element={<OwnerHome />} />

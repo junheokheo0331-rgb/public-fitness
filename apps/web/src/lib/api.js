@@ -110,22 +110,88 @@ export async function saveRoutine({ gymId, title, body, goal, level, days, routi
 }
 
 export async function trainerRoutines() {
-  if (!sb) { await wait(); return M.TRAINER_ROUTINES; }
+  if (!sb) { await wait(); return [...M.TRAINER_ROUTINES]; }
   const { data } = await sb.from('routines').select('*')
     .eq('origin', 'trainer').order('updated_at', { ascending: false });
   return data ?? [];
 }
 
-/** 트레이너 → 회원. 담당 회원이 아니면 서버가 거부한다. */
+export async function getTrainerRoutine(routineId) {
+  if (!sb) {
+    await wait();
+    return M.TRAINER_ROUTINES.find((r) => r.id === routineId) ?? null;
+  }
+  return null;
+}
+
+/** 트레이너 보관함 루틴 저장(추가·수정). 기구 기준 엔진으로 body 를 다시 짠다. */
+export async function saveTrainerRoutine({
+  gymId = 'g-1', title, goal = 'hypertrophy', level = 2, days = 3, routineId,
+}) {
+  if (!sb) {
+    await wait(200);
+    const id = routineId ?? `tr-${Date.now()}`;
+    const row = {
+      id, gym_id: gymId, title, days: Number(days) || 3,
+      goal, level: Number(level) || 2, origin: 'trainer',
+      updated: new Date().toISOString().slice(0, 10),
+    };
+    const i = M.TRAINER_ROUTINES.findIndex((r) => r.id === id);
+    if (i >= 0) M.TRAINER_ROUTINES[i] = row;
+    else M.TRAINER_ROUTINES.unshift(row);
+    return id;
+  }
+  return null;
+}
+
+export async function deleteTrainerRoutine(routineId) {
+  if (!sb) {
+    await wait(120);
+    const i = M.TRAINER_ROUTINES.findIndex((r) => r.id === routineId);
+    if (i >= 0) M.TRAINER_ROUTINES.splice(i, 1);
+    return true;
+  }
+  return false;
+}
+
+/** 이 회원에게 보낸 숙제 기록 */
+export async function memberHomework(memberId) {
+  if (!sb) {
+    await wait();
+    return M.HOMEWORK_LOG
+      .filter((h) => h.member_id === memberId)
+      .sort((a, b) => (a.sent_at < b.sent_at ? 1 : -1));
+  }
+  return [];
+}
+
+/** 트레이너 → 회원. 담당 회원인지는 서버가 판정한다. */
 export async function assignRoutine({ memberId, routineId, note, dueDate }) {
   if (!sb) {
     await wait(250);
     const src = M.TRAINER_ROUTINES.find((r) => r.id === routineId);
-    M.SAVED_ROUTINES.unshift({
-      ...src, id: `r-${Date.now()}`, origin: 'trainer', note,
+    if (!src) throw new Error('루틴을 찾을 수 없습니다.');
+    const title = `${src.title} · 숙제`;
+    const copy = {
+      ...src,
+      id: `r-${Date.now()}`,
+      origin: 'trainer',
+      title,
+      note: note || null,
+      due: dueDate || null,
       updated: new Date().toISOString().slice(0, 10),
+    };
+    M.SAVED_ROUTINES.unshift(copy);
+    M.HOMEWORK_LOG.unshift({
+      id: `hw-${Date.now()}`,
+      member_id: memberId,
+      routine_id: src.id,
+      title,
+      note: note || null,
+      due: dueDate || null,
+      sent_at: new Date().toISOString().slice(0, 10),
     });
-    return `asg-${Date.now()}`;
+    return copy.id;
   }
   const { data, error } = await sb.rpc('assign_routine', {
     p_member_id: memberId, p_routine_id: routineId,
@@ -295,4 +361,206 @@ export async function setGymMachines(gymId, codes) {
     await sb.from('gym_machines').insert(codes.map((c) => ({ gym_id: gymId, machine_code: c })));
   }
   return codes;
+}
+
+/* ---------- 지역 · PT 역경매 ----------
+   회원이 PT 요청을 올리면 트레이너가 이력서(프로필)+제안가로 지원하고,
+   회원이 골라 매칭한다. 김과외·카닥 견적 흐름과 같다. */
+
+export async function listAreas() {
+  if (!sb) { await wait(40); return [...M.AREAS]; }
+  return [];
+}
+
+export async function getCurrentArea() {
+  if (!sb) {
+    await wait(40);
+    return M.AREAS.find((a) => a.id === M.LOCATION.areaId) ?? M.AREAS[0];
+  }
+  return null;
+}
+
+export async function setCurrentArea(areaId) {
+  if (!sb) {
+    await wait(60);
+    M.LOCATION.areaId = areaId;
+    return M.AREAS.find((a) => a.id === areaId);
+  }
+  return null;
+}
+
+export async function getTrainer(trainerId) {
+  if (!sb) {
+    await wait();
+    return M.TRAINERS.find((t) => t.id === trainerId) ?? null;
+  }
+  return null;
+}
+
+export async function myTrainerProfile() {
+  if (!sb) {
+    await wait();
+    return M.TRAINERS.find((t) => t.id === 'u-trainer') ?? M.TRAINERS[0];
+  }
+  return null;
+}
+
+/** 회원: 내 PT 요청 목록 */
+export async function myPtRequests() {
+  if (!sb) {
+    await wait();
+    return M.PT_REQUESTS
+      .filter((r) => r.member_id === 'u-member')
+      .map((r) => ({
+        ...r,
+        apply_count: M.PT_APPLICATIONS.filter((a) => a.request_id === r.id).length,
+      }))
+      .sort((a, b) => (a.created < b.created ? 1 : -1));
+  }
+  return [];
+}
+
+/** 트레이너: 현재 지역 근처 열린 요청 */
+export async function listOpenPtRequests(areaId) {
+  if (!sb) {
+    await wait();
+    const aid = areaId ?? M.LOCATION.areaId;
+    return M.PT_REQUESTS
+      .filter((r) => r.status === 'open')
+      .map((r) => ({
+        ...r,
+        distance_m: r.area_id === aid ? r.distance_m : r.distance_m + 2500,
+        apply_count: M.PT_APPLICATIONS.filter((a) => a.request_id === r.id).length,
+        already_applied: M.PT_APPLICATIONS.some(
+          (a) => a.request_id === r.id && a.trainer_id === 'u-trainer',
+        ),
+      }))
+      .sort((a, b) => a.distance_m - b.distance_m);
+  }
+  return [];
+}
+
+export async function getPtRequest(requestId) {
+  if (!sb) {
+    await wait();
+    const r = M.PT_REQUESTS.find((x) => x.id === requestId);
+    if (!r) return null;
+    return {
+      ...r,
+      apply_count: M.PT_APPLICATIONS.filter((a) => a.request_id === r.id).length,
+    };
+  }
+  return null;
+}
+
+export async function createPtRequest(payload) {
+  if (!sb) {
+    await wait(200);
+    const area = M.AREAS.find((a) => a.id === (payload.area_id ?? M.LOCATION.areaId));
+    const row = {
+      id: `req-${Date.now()}`,
+      member_id: 'u-member',
+      member_name: '김지훈',
+      area_id: area?.id ?? M.LOCATION.areaId,
+      dong: area?.label ?? '부산',
+      distance_m: 0,
+      goal: payload.goal,
+      sessions: Number(payload.sessions) || 10,
+      budget_max: Number(payload.budget_max) || 0,
+      schedule: payload.schedule || '',
+      note: payload.note || '',
+      status: 'open',
+      created: new Date().toISOString().slice(0, 10),
+    };
+    M.PT_REQUESTS.unshift(row);
+
+    /* 연습용: 근처 트레이너 2명이 바로 제안서를 보낸 것처럼 시드 */
+    const nearby = M.TRAINERS.filter((t) => t.area_id === row.area_id).slice(0, 2);
+    const pool = nearby.length ? nearby : M.TRAINERS.slice(0, 2);
+    for (const t of pool) {
+      const cut = 0.88 + Math.random() * 0.1;
+      const proposed = Math.round((t.price_per_session * row.sessions * cut) / 10000) * 10000;
+      M.PT_APPLICATIONS.unshift({
+        id: `app-${Date.now()}-${t.id}`,
+        request_id: row.id,
+        trainer_id: t.id,
+        message: `${row.goal} ${row.sessions}회 제안드립니다. ${t.bio}`,
+        proposed_price: Math.min(proposed, row.budget_max || proposed),
+        proposed_per: Math.round(Math.min(proposed, row.budget_max || proposed) / row.sessions),
+        status: 'pending',
+        created: row.created,
+      });
+    }
+    return row;
+  }
+  return null;
+}
+
+export async function listApplications(requestId) {
+  if (!sb) {
+    await wait();
+    return M.PT_APPLICATIONS
+      .filter((a) => a.request_id === requestId)
+      .map((a) => {
+        const t = M.TRAINERS.find((x) => x.id === a.trainer_id);
+        return { ...a, trainer: t };
+      })
+      .sort((a, b) => a.proposed_price - b.proposed_price);
+  }
+  return [];
+}
+
+export async function applyToPtRequest({ requestId, message, proposedPrice }) {
+  if (!sb) {
+    await wait(220);
+    const me = M.TRAINERS.find((t) => t.id === 'u-trainer');
+    const exists = M.PT_APPLICATIONS.find(
+      (a) => a.request_id === requestId && a.trainer_id === 'u-trainer',
+    );
+    if (exists) return exists;
+    const sessions = M.PT_REQUESTS.find((r) => r.id === requestId)?.sessions || 10;
+    const price = Number(proposedPrice) || (me.price_per_session * sessions);
+    const row = {
+      id: `app-${Date.now()}`,
+      request_id: requestId,
+      trainer_id: 'u-trainer',
+      message: message || '',
+      proposed_price: price,
+      proposed_per: Math.round(price / sessions),
+      status: 'pending',
+      created: new Date().toISOString().slice(0, 10),
+    };
+    M.PT_APPLICATIONS.unshift(row);
+    return row;
+  }
+  return null;
+}
+
+/** 회원이 트레이너 지원서 하나를 고르면 요청이 matched 가 된다. */
+export async function selectPtApplication(requestId, applicationId) {
+  if (!sb) {
+    await wait(250);
+    const req = M.PT_REQUESTS.find((r) => r.id === requestId);
+    const app = M.PT_APPLICATIONS.find((a) => a.id === applicationId);
+    if (!req || !app) throw new Error('not found');
+    req.status = 'matched';
+    req.matched_application_id = applicationId;
+    for (const a of M.PT_APPLICATIONS.filter((x) => x.request_id === requestId)) {
+      a.status = a.id === applicationId ? 'accepted' : 'rejected';
+    }
+    const trainer = M.TRAINERS.find((t) => t.id === app.trainer_id);
+    M.MY_PT.trainer_name = trainer?.name ?? M.MY_PT.trainer_name;
+    M.MY_PT.paid_amount = app.proposed_price;
+    M.MY_PT.list_price = app.proposed_price;
+    M.MY_PT.total_sessions = req.sessions;
+    M.MY_PT.used_sessions = 0;
+    if (trainer && !M.MY_CLIENTS.some((c) => c.id === 'u-member')) {
+      M.MY_CLIENTS.unshift({
+        id: 'u-member', name: '김지훈', sessions_left: req.sessions,
+        next: null, consent_proxy: true, last_body: null,
+      });
+    }
+    return { request: req, application: app, trainer };
+  }
+  return null;
 }

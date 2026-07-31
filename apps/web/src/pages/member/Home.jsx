@@ -1,76 +1,113 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { TopBar, Card, Chip, Plate, Empty, km } from '../../ui/bits.jsx';
-import { listNearbyGyms, myMembership, getGym } from '../../lib/api.js';
+import { Card, Chip, Plate, km } from '../../ui/bits.jsx';
+import LocationPicker from '../../ui/LocationPicker.jsx';
+import { listNearbyGyms, myMembership, getGym, myPtRequests } from '../../lib/api.js';
 
-/* 첫 화면.
-
-   다니는 헬스장이 있으면 그게 맨 위다. 앱을 여는 이유의 대부분은
-   "오늘 뭐 하지"이지 "어디 등록하지"가 아니다.
-   등록한 곳이 없을 때만 탐색이 주인공이 된다. */
+/* 카닥식 홈: 지역 → PT 신청(역경매) / 헬스장 찾기 → 목록 */
 
 export default function MemberHome() {
   const nav = useNavigate();
   const [gyms, setGyms] = useState(null);
-  const [mine, setMine] = useState(undefined);   // undefined=로딩, null=없음
+  const [mine, setMine] = useState(undefined);
+  const [myReqs, setMyReqs] = useState([]);
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const [list, ms] = await Promise.all([listNearbyGyms(), myMembership()]);
-      if (!alive) return;
-      setGyms(list);
-      if (!ms) { setMine(null); return; }
-      const g = await getGym(ms.gym_id);
-      if (alive) setMine({ ...ms, gym: g });
-    })();
-    return () => { alive = false; };
-  }, []);
+  const load = async () => {
+    const [list, ms, reqs] = await Promise.all([
+      listNearbyGyms(),
+      myMembership(),
+      myPtRequests(),
+    ]);
+    setGyms(list);
+    setMyReqs(reqs);
+    if (!ms) { setMine(null); return; }
+    const g = await getGym(ms.gym_id);
+    setMine({ ...ms, gym: g });
+  };
 
+  useEffect(() => { load(); }, []);
+
+  const openReq = myReqs.find((r) => r.status === 'open');
   const daysLeft = mine
     ? Math.ceil((new Date(mine.ends_on) - new Date()) / 86400000)
     : null;
 
   return (
     <>
-      <TopBar title="어디서 운동하시나요" sub="부산 서면 기준" />
+      <div className="home-loc">
+        <LocationPicker onChange={() => load()} />
+      </div>
 
-      {mine === undefined && <Card><p className="muted small">불러오는 중…</p></Card>}
+      <p className="home-q">무엇을 도와드릴까요?</p>
+
+      <div className="svc">
+        <button type="button" className="svc__card" onClick={() => nav('/pt/new')}>
+          <span className="svc__badge">추천</span>
+          <strong className="svc__title">PT 받기</strong>
+          <span className="svc__desc">신청하면 트레이너가<br />제안서를 보내요</span>
+          <span className="svc__art" aria-hidden="true">PT</span>
+        </button>
+        <button
+          type="button"
+          className="svc__card"
+          onClick={() => {
+            document.getElementById('nearby-gyms')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+        >
+          <span className="svc__badge svc__badge--sky">찾기</span>
+          <strong className="svc__title">헬스장 찾기</strong>
+          <span className="svc__desc">이 지역 기구·거리<br />기준으로 비교</span>
+          <span className="svc__art svc__art--dim" aria-hidden="true">GYM</span>
+        </button>
+      </div>
+
+      {openReq ? (
+        <button type="button" className="promo" onClick={() => nav(`/pt/${openReq.id}`)}>
+          <div className="grow">
+            <p className="promo__eyebrow">진행 중</p>
+            <p className="promo__title">
+              {openReq.goal} {openReq.sessions}회 · 제안 {openReq.apply_count}건
+            </p>
+            <p className="promo__sub">제안서를 읽고 트레이너를 고르세요</p>
+          </div>
+          <span className="promo__go" aria-hidden="true">›</span>
+        </button>
+      ) : (
+        <button type="button" className="promo" onClick={() => nav('/pt/new')}>
+          <div className="grow">
+            <p className="promo__eyebrow">역경매</p>
+            <p className="promo__title">PT 신청 올리고 제안 받기</p>
+            <p className="promo__sub">내가 고르는 PT · 트레이너가 이력서를 보냅니다</p>
+          </div>
+          <span className="promo__go" aria-hidden="true">›</span>
+        </button>
+      )}
 
       {mine && (
         <Card className="stack-y">
           <p className="eyebrow">다니는 곳</p>
           <div className="row row--between" style={{ alignItems: 'flex-start' }}>
             <div className="grow">
-              <h2 className="card__title" style={{ fontSize: 19 }}>{mine.gym.name}</h2>
+              <h2 className="card__title" style={{ fontSize: 18 }}>{mine.gym.name}</h2>
               <p className="card__note">{mine.plan_name} · {mine.ends_on.replace(/-/g, '.')}까지</p>
             </div>
             <Plate value={daysLeft} unit="일 남음" />
           </div>
-
           <div className="row row--wrap">
             <Chip kind="machine">보유 기구 {mine.gym.machines.length}종</Chip>
             <Chip>{mine.gym.open}</Chip>
           </div>
-
-          <button className="btn btn--block" onClick={() => nav('/my')}>
+          <button className="btn btn--block" type="button" onClick={() => nav('/my')}>
             내 헬스장 들어가기
           </button>
         </Card>
       )}
 
-      {mine === null && (
-        <Card>
-          <Empty title="아직 등록한 헬스장이 없습니다">
-            아래에서 가까운 곳을 골라 보세요. 등록 전에도 그 헬스장 기구로
-            어떤 루틴이 나오는지 미리 볼 수 있습니다.
-          </Empty>
-        </Card>
-      )}
-
-      <div className="row row--between" style={{ margin: '18px 2px 8px' }}>
+      <div id="nearby-gyms" className="row row--between" style={{ margin: '18px 2px 8px' }}>
         <p className="eyebrow" style={{ margin: 0 }}>주변 헬스장</p>
-        <span className="tiny muted">가까운 순</span>
+        <Link className="tiny" style={{ color: 'var(--volt)', fontWeight: 700 }} to="/pt">
+          내 PT 신청 ›
+        </Link>
       </div>
 
       <Card flush>
@@ -89,10 +126,6 @@ export default function MemberHome() {
           ))}
         </ul>
       </Card>
-
-      <p className="tiny muted" style={{ padding: '0 4px' }}>
-        지도로 보려면 위치 권한이 필요합니다. 목록만으로도 전부 이용할 수 있습니다.
-      </p>
     </>
   );
 }

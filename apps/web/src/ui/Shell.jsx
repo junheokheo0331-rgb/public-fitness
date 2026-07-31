@@ -5,13 +5,14 @@ import { useSession } from '../lib/session.jsx';
    탭 수를 4개 이하로 유지한다 — 엄지로 닿는 범위가 그 정도다. */
 const TABS = {
   member: [
-    { to: '/',        glyph: '◎', label: '주변' },
-    { to: '/my',      glyph: '▣', label: '내 헬스장' },
-    { to: '/body',    glyph: '◐', label: '체성분' },
+    { to: '/',        glyph: '◎', label: '홈' },
+    { to: '/pt',      glyph: '▣', label: 'PT 신청' },
+    { to: '/my',      glyph: '▤', label: '내 헬스장' },
     { to: '/me',      glyph: '◇', label: '내 정보' },
   ],
   trainer: [
     { to: '/t',           glyph: '◎', label: '오늘' },
+    { to: '/t/requests',  glyph: '▣', label: 'PT 요청' },
     { to: '/t/clients',   glyph: '▤', label: '담당 회원' },
     { to: '/me',          glyph: '◇', label: '내 정보' },
   ],
@@ -36,7 +37,12 @@ export default function Shell() {
 
       <nav className="nav" aria-label="주요 메뉴">
         {tabs.map((t) => (
-          <NavLink key={t.to} to={t.to} end className="nav__item">
+          <NavLink
+            key={t.to}
+            to={t.to}
+            end={t.to === '/' || t.to === '/t' || t.to === '/o'}
+            className="nav__item"
+          >
             <span className="nav__glyph" aria-hidden="true">{t.glyph}</span>
             {t.label}
           </NavLink>

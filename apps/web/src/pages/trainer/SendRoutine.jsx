@@ -1,26 +1,25 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { TopBar, Card, Chip, Note, Field, Empty } from '../../ui/bits.jsx';
 import { myClients, trainerRoutines, assignRoutine } from '../../lib/api.js';
 
-/* 루틴 송출 — 트레이너가 회원에게 숙제를 보낸다.
+/* 보관함 루틴을 골라 회원에게 숙제로 보낸다. */
 
-   "공유"가 아니라 "복사"다. 트레이너가 나중에 자기 루틴을 고쳐도
-   회원이 받은 것은 그대로 남아야 한다. PT 기록의 성격이 있어서
-   나중에 "그때 뭘 시켰는지"가 남아야 하기 때문이다.
-
-   담당 회원인지는 화면이 아니라 서버(assign_routine RPC)가 판정한다. */
+const GOAL_LABEL = {
+  hypertrophy: '근비대', fatloss: '감량', strength: '스트렝스', conditioning: '컨디션',
+};
 
 export default function SendRoutine() {
   const { memberId } = useParams();
+  const [params] = useSearchParams();
   const nav = useNavigate();
 
   const [client, setClient] = useState(undefined);
   const [routines, setRoutines] = useState(null);
-  const [picked, setPicked] = useState(null);
+  const [picked, setPicked] = useState(params.get('routine'));
   const [note, setNote] = useState('');
   const [due, setDue] = useState('');
-  const [phase, setPhase] = useState('idle');   // idle | sending | done
+  const [phase, setPhase] = useState('idle');
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -28,14 +27,26 @@ export default function SendRoutine() {
       const [cs, rs] = await Promise.all([myClients(), trainerRoutines()]);
       setClient(cs.find((c) => c.id === memberId) ?? null);
       setRoutines(rs);
+      const pref = params.get('routine');
+      if (pref && rs.some((r) => r.id === pref)) setPicked(pref);
     })();
-  }, [memberId]);
+  }, [memberId, params]);
 
   if (client === undefined || !routines) {
-    return <><TopBar title="루틴 보내기" back /><Card><p className="muted small">불러오는 중…</p></Card></>;
+    return (
+      <>
+        <TopBar title="숙제 내기" back />
+        <Card><p className="muted small">불러오는 중…</p></Card>
+      </>
+    );
   }
   if (!client) {
-    return <><TopBar title="루틴 보내기" back /><Card><Empty title="담당 회원이 아닙니다" /></Card></>;
+    return (
+      <>
+        <TopBar title="숙제 내기" back />
+        <Card><Empty title="담당 회원이 아닙니다" /></Card>
+      </>
+    );
   }
 
   async function send() {
@@ -43,7 +54,8 @@ export default function SendRoutine() {
     setError(null);
     try {
       await assignRoutine({
-        memberId, routineId: picked,
+        memberId,
+        routineId: picked,
         note: note.trim() || null,
         dueDate: due || null,
       });
@@ -59,37 +71,49 @@ export default function SendRoutine() {
     const r = routines.find((x) => x.id === picked);
     return (
       <>
-        <TopBar title="보냈습니다" back />
+        <TopBar title="숙제 보냄" back />
         <Note kind="go" title={`${client.name} 회원에게 전달됐습니다`}>
           <p className="small">
-            &lsquo;{r?.title}&rsquo; 이(가) 회원 앱의 내 헬스장 &gt; 저장된 루틴에 바로 보입니다.
-          </p>
-          <p className="small" style={{ marginTop: 6 }}>
-            회원 소유의 사본으로 갔습니다. 트레이너님이 원본을 고쳐도 보낸 것은
-            그대로 남습니다.
+            &lsquo;{r?.title}&rsquo; 이(가) 회원 앱의 내 헬스장 → 저장된 루틴에 숙제로 보입니다.
           </p>
         </Note>
-        <button className="btn btn--block" onClick={() => nav('/t/clients')}>담당 회원으로</button>
+        <button type="button" className="btn btn--block" onClick={() => nav(`/t/clients/${memberId}`)}>
+          회원 상세로
+        </button>
+        <button
+          type="button"
+          className="btn btn--ghost btn--block"
+          style={{ marginTop: 8 }}
+          onClick={() => nav('/t/clients')}
+        >
+          담당 회원 목록
+        </button>
       </>
     );
   }
 
   return (
     <>
-      <TopBar title={client.name} sub="루틴 보내기" back />
+      <TopBar title={client.name} sub="숙제 내기" back />
 
       {error && <Note kind="stop"><p className="small">{error}</p></Note>}
 
-      <Card title="어떤 루틴을 보낼까요" flush>
+      <Card title="보관함에서 고르기" flush>
         {routines.length === 0 ? (
-          <Empty title="만들어 둔 루틴이 없습니다">
-            회원 헬스장의 보유 기구로 먼저 루틴을 만들어보세요.
-          </Empty>
+          <div style={{ padding: 16 }}>
+            <Empty title="만들어 둔 루틴이 없습니다">
+              먼저 루틴을 추가한 뒤 숙제를 보내세요.
+            </Empty>
+            <Link className="btn btn--block" to={`/t/routines/new?member=${memberId}`}>
+              루틴 추가
+            </Link>
+          </div>
         ) : (
           <ul className="list">
             {routines.map((r) => (
               <li key={r.id}>
                 <button
+                  type="button"
                   className="list__item"
                   style={{ width: '100%' }}
                   aria-pressed={picked === r.id}
@@ -99,16 +123,17 @@ export default function SendRoutine() {
                     aria-hidden="true"
                     style={{
                       width: 20, height: 20, flex: 'none', borderRadius: 999,
-                      border: `1px solid ${picked === r.id ? 'var(--ink)' : 'var(--line)'}`,
-                      background: picked === r.id ? 'var(--ink)' : '#fff',
+                      border: `1px solid ${picked === r.id ? 'var(--volt)' : 'var(--line)'}`,
+                      background: picked === r.id ? 'var(--volt)' : '#fff',
                     }}
                   />
                   <span className="list__body">
                     <span className="list__title">{r.title}</span>
                     <span className="list__meta">
-                      주 {r.days}회 · {r.updated.replace(/-/g, '.')} 수정
+                      주 {r.days}회 · {GOAL_LABEL[r.goal] ?? r.goal} · {r.updated.replace(/-/g, '.')}
                     </span>
                   </span>
+                  {picked === r.id && <Chip kind="sub">선택</Chip>}
                 </button>
               </li>
             ))}
@@ -116,8 +141,19 @@ export default function SendRoutine() {
         )}
       </Card>
 
-      <Card title="회원에게 남길 말">
-        <Field label="알림장" hint="운동 중 주의할 점이나 이번 주 목표를 적어주세요.">
+      {routines.length > 0 && (
+        <button
+          type="button"
+          className="btn btn--ghost btn--block btn--sm"
+          style={{ marginBottom: 12 }}
+          onClick={() => nav(`/t/routines/new?member=${memberId}`)}
+        >
+          + 새 루틴 만들고 쓰기
+        </button>
+      )}
+
+      <Card title="숙제 메모">
+        <Field label="알림장" hint="주의점·이번 주 목표를 적어 주세요.">
           <textarea
             className="input"
             rows={3}
@@ -128,18 +164,27 @@ export default function SendRoutine() {
           />
         </Field>
         <Field label="언제까지 (선택)">
-          <input className="input input--num" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+          <input
+            className="input input--num"
+            type="date"
+            value={due}
+            onChange={(e) => setDue(e.target.value)}
+          />
         </Field>
       </Card>
 
-      <button className="btn btn--block" onClick={send} disabled={!picked || phase === 'sending'}>
-        {phase === 'sending' ? '보내는 중…' : '보내기'}
+      <button
+        type="button"
+        className="btn btn--block"
+        onClick={send}
+        disabled={!picked || phase === 'sending'}
+      >
+        {phase === 'sending' ? '보내는 중…' : '숙제 보내기'}
       </button>
 
       <Note style={{ marginTop: 12 }}>
         <p className="small">
-          보낸 루틴은 회원 소유의 사본이 됩니다. 회원이 직접 고칠 수 있고,
-          트레이너님이 원본을 수정해도 이미 보낸 것은 바뀌지 않습니다.
+          보낸 루틴은 회원 소유의 사본이 됩니다. 원본을 고쳐도 이미 보낸 숙제는 바뀌지 않습니다.
         </p>
       </Note>
     </>

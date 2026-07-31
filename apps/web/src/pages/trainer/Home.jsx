@@ -16,13 +16,24 @@ export default function TrainerHome() {
     <>
       <TopBar title="오늘" sub="서면 스트렝스짐" />
 
+      <Card>
+        <div className="row row--between" style={{ alignItems: 'center' }}>
+          <div>
+            <p className="eyebrow">역경매</p>
+            <p className="card__title" style={{ fontSize: 16 }}>근처 PT 요청 보기</p>
+            <p className="card__note">회원이 올리면 이력서로 지원하세요</p>
+          </div>
+          <Link className="btn btn--sm" to="/t/requests">바로가기</Link>
+        </div>
+      </Card>
+
       <Card title="예정된 수업">
         {!clients && <p className="muted small">불러오는 중…</p>}
         {clients && today.length === 0 && <Empty title="예정된 수업이 없습니다" />}
         <ul className="list">
           {today.map((c) => (
             <li key={c.id}>
-              <Link className="list__item" to={`/t/clients/${c.id}/send`}>
+              <Link className="list__item" to={`/t/clients/${c.id}`}>
                 <div className="list__body">
                   <div className="list__title">{c.name}</div>
                   <div className="list__meta mono">{c.next}</div>

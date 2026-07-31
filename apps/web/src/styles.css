@@ -1,42 +1,38 @@
 /* ============================================================
    GymLink 디자인 토큰
 
-   출발점은 헬스장 바닥이다. 고무 매트의 청흑색, 분필과 콘크리트의
-   회백색, 그리고 중량 스택과 안전 표시에 쓰이는 노랑.
-   노랑은 "지금 이걸 보라"는 신호로만 쓴다. 장식으로 쓰면 죽는다.
-
-   숫자는 이 앱의 내용물이다 (중량, 횟수, 기구 수, 환불액).
-   그래서 숫자에만 고정폭 서체를 쓰고, 표에서 자릿수가 맞도록 한다.
+   소비자 앱 톤: 밝은 회색 바닥 + 흰 카드 + 큰 라운드 + 옅은 그림자.
+   신호색은 스카이 블루. 숫자는 고정폭으로 자릿수를 맞춘다.
    ============================================================ */
 
 :root {
-  --ink:      #171B22;   /* 고무 매트 */
-  --ink-2:    #59616E;   /* 보조 텍스트 */
-  --ink-3:    #8E96A3;   /* 흐린 텍스트 */
-  --paper:    #F2F3F0;   /* 콘크리트 바닥 */
+  --ink:      #1C1C1E;
+  --ink-2:    #6B7280;
+  --ink-3:    #9CA3AF;
+  --paper:    #F5F6F8;
   --card:     #FFFFFF;
-  --line:     #DEE1DB;
-  --line-2:   #EBEDE8;
+  --line:     #ECEEF2;
+  --line-2:   #F3F4F6;
 
-  --volt:     #E8C22A;   /* 중량 스택 노랑 — 신호색 */
-  --volt-ink: #4A3B00;
-  --volt-bg:  #FCF4D6;
+  --volt:     #3B9EFF;   /* 스카이 블루 — 신호색 */
+  --volt-ink: #0B4F8A;
+  --volt-bg:  #E8F4FF;
 
   --go:       #2F7D5B;
   --go-bg:    #E4F1EA;
   --stop:     #C4362B;
   --stop-bg:  #FBE9E7;
 
-  --r:        10px;
-  --r-lg:     16px;
-  --shadow:   0 1px 2px rgba(23,27,34,.06), 0 8px 24px -12px rgba(23,27,34,.18);
+  --r:        12px;
+  --r-lg:     20px;
+  --shadow:   0 2px 8px rgba(28,28,30,.04), 0 10px 28px -10px rgba(28,28,30,.10);
 
-  --tap:      44px;      /* 최소 터치 영역 */
+  --tap:      44px;
   --nav-h:    62px;
 
   --font:  'Pretendard Variable', Pretendard, system-ui, -apple-system, sans-serif;
   --mono:  'IBM Plex Mono', ui-monospace, monospace;
-  --disp:  'Archivo', var(--font);
+  --disp:  var(--font);
 }
 
 * { box-sizing: border-box; }
@@ -58,9 +54,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 a { color: inherit; }
 
 :focus-visible {
-  outline: 2px solid var(--ink);
+  outline: 2px solid var(--volt);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -82,7 +78,8 @@ a { color: inherit; }
 
 .topbar {
   position: sticky; top: 0; z-index: 20;
-  background: var(--paper);
+  background: rgba(245,246,248,.92);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
   padding: 12px 16px;
   display: flex; align-items: center; gap: 10px;
@@ -110,15 +107,16 @@ a { color: inherit; }
   gap: 3px; font-size: 11px; color: var(--ink-3); min-height: var(--tap);
   text-decoration: none;
 }
-.nav__item[aria-current='page'] { color: var(--ink); font-weight: 700; }
+.nav__item[aria-current='page'] { color: var(--volt); font-weight: 700; }
 .nav__glyph { font-size: 17px; line-height: 1; }
 
 /* ---------- 카드 ---------- */
 .card {
   background: var(--card);
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: var(--r-lg);
-  padding: 16px;
+  box-shadow: var(--shadow);
+  padding: 18px;
   margin-bottom: 12px;
 }
 .card--flush { padding: 0; overflow: hidden; }
@@ -130,8 +128,10 @@ a { color: inherit; }
 .card__note { font-size: 12.5px; color: var(--ink-2); margin: 0; }
 
 .eyebrow {
-  font-family: var(--mono); font-size: 11px; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--ink-3); margin: 0 0 6px;
+  display: inline-flex; align-items: center;
+  font-size: 12px; font-weight: 600; letter-spacing: -.01em;
+  color: var(--volt-ink); background: var(--volt-bg);
+  padding: 4px 10px; border-radius: 999px; margin: 0 0 10px;
 }
 
 /* ---------- 시그니처: 원판 스택 수치 ----------
@@ -139,8 +139,8 @@ a { color: inherit; }
    여기서는 실제로 봉에 끼우는 원판처럼 쌓아서 보여준다.
    숫자가 이 앱의 내용물이라는 걸 화면이 스스로 말하게 하는 장치다. */
 .plate {
-  display: inline-flex; align-items: stretch; border-radius: 6px;
-  overflow: hidden; border: 1px solid var(--ink); background: var(--ink);
+  display: inline-flex; align-items: stretch; border-radius: 10px;
+  overflow: hidden; border: 1px solid #1C1C1E; background: #1C1C1E;
 }
 .plate__num {
   font-family: var(--disp); font-weight: 800; font-size: 26px;
@@ -174,23 +174,24 @@ a { color: inherit; }
 .chip--sub  { background: var(--volt-bg); color: var(--volt-ink); }
 .chip--go   { background: var(--go-bg);   color: var(--go); }
 .chip--stop { background: var(--stop-bg); color: var(--stop); }
-.chip--role { background: var(--ink); color: #fff; }
+.chip--role { background: var(--volt); color: #fff; }
 
 /* ---------- 버튼 ---------- */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  min-height: var(--tap); padding: 0 16px; border-radius: var(--r);
-  border: 1px solid var(--ink); background: var(--ink); color: #fff;
+  min-height: var(--tap); padding: 0 18px; border-radius: var(--r);
+  border: 1px solid var(--volt); background: var(--volt); color: #fff;
   font-weight: 700; font-size: 14.5px; cursor: pointer; text-decoration: none;
+  box-shadow: 0 6px 16px -8px rgba(59,158,255,.55);
   transition: transform .06s ease, opacity .15s ease;
 }
 .btn:active { transform: translateY(1px); }
-.btn[disabled] { opacity: .4; cursor: not-allowed; }
-.btn--ghost { background: transparent; color: var(--ink); border-color: var(--line); }
-.btn--volt  { background: var(--volt); color: var(--volt-ink); border-color: var(--volt); }
-.btn--stop  { background: transparent; color: var(--stop); border-color: var(--stop); }
+.btn[disabled] { opacity: .4; cursor: not-allowed; box-shadow: none; }
+.btn--ghost { background: #fff; color: var(--ink); border-color: var(--line); box-shadow: none; }
+.btn--volt  { background: var(--volt-bg); color: var(--volt-ink); border-color: transparent; box-shadow: none; }
+.btn--stop  { background: transparent; color: var(--stop); border-color: var(--stop); box-shadow: none; }
 .btn--block { width: 100%; }
-.btn--sm    { min-height: 34px; padding: 0 11px; font-size: 13px; border-radius: 8px; }
+.btn--sm    { min-height: 36px; padding: 0 12px; font-size: 13px; border-radius: 10px; box-shadow: none; }
 
 /* ---------- 폼 ---------- */
 .field { display: block; margin-bottom: 12px; }
@@ -200,7 +201,7 @@ a { color: inherit; }
   width: 100%; min-height: var(--tap); padding: 8px 12px;
   border: 1px solid var(--line); border-radius: var(--r); background: #fff;
 }
-.input:focus { border-color: var(--ink); outline: none; }
+.input:focus { border-color: var(--volt); outline: none; box-shadow: 0 0 0 3px var(--volt-bg); }
 .input--num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .input--warn { border-color: var(--volt); background: var(--volt-bg); }
 
@@ -236,7 +237,7 @@ a { color: inherit; }
   border-radius: var(--r); padding: 12px 14px; font-size: 13px;
   border: 1px solid var(--line); background: #fff; margin-bottom: 12px;
 }
-.note--volt { background: var(--volt-bg); border-color: #EBD98C; color: var(--volt-ink); }
+.note--volt { background: var(--volt-bg); border-color: #B7DBFF; color: var(--volt-ink); }
 .note--stop { background: var(--stop-bg); border-color: #F0C7C2; color: #7A241C; }
 .note--go   { background: var(--go-bg);   border-color: #BEDCCC; color: #1D5940; }
 .note__title { font-weight: 700; margin: 0 0 4px; font-size: 13px; }
@@ -253,26 +254,190 @@ a { color: inherit; }
 .gauge__fill { height: 100%; background: var(--volt); transition: width .3s ease; }
 .gauge__fill--go { background: var(--go); }
 
-/* ---------- 로그인 ---------- */
-.auth { min-height: 100%; display: flex; flex-direction: column; justify-content: center; padding: 28px 20px 40px; max-width: 420px; margin: 0 auto; }
-.auth__mark { font-family: var(--disp); font-weight: 800; font-size: 30px; letter-spacing: -.03em; margin: 0; }
-.auth__tag { color: var(--ink-2); font-size: 13.5px; margin: 4px 0 26px; }
+/* ---------- 로그인 ----------
+   회원 간편 로그인이 본문. 트레이너·관장은 하단 톤 다운 링크로만. */
+.auth {
+  position: relative;
+  min-height: 100%; display: flex; flex-direction: column;
+  justify-content: center; padding: 32px 20px 40px;
+  max-width: 420px; margin: 0 auto;
+}
+.auth::before {
+  content: '';
+  position: fixed; inset: 0; z-index: -1;
+  background:
+    radial-gradient(120% 55% at 50% -8%, var(--volt-bg), transparent 55%),
+    var(--paper);
+}
+.auth__head { margin-bottom: 22px; }
+.auth__mark {
+  font-family: var(--disp); font-weight: 800; font-size: 32px;
+  letter-spacing: -.04em; margin: 0; color: var(--ink);
+}
+.auth__mark span { color: var(--volt); }
+.auth__tag { color: var(--ink-2); font-size: 14px; margin: 8px 0 0; line-height: 1.5; }
+.auth__main {
+  display: flex; flex-direction: column; gap: 12px;
+  background: var(--card); border-radius: var(--r-lg);
+  box-shadow: var(--shadow); padding: 20px 18px;
+}
+.auth__back {
+  align-self: flex-start; margin: 0 0 18px; padding: 0;
+  border: 0; background: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--ink-2);
+}
+.auth__back:hover { color: var(--volt); }
+.auth__alt {
+  width: 100%; min-height: 40px; margin-top: 2px;
+  border: 0; background: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--ink-2);
+}
+.auth__alt:hover { color: var(--volt); }
+.auth__id { margin-top: 4px; padding-top: 4px; }
+.auth__signup {
+  margin: 6px 0 0; text-align: center;
+  font-size: 13px; color: var(--ink-2);
+}
+.auth__link {
+  padding: 0; border: 0; background: none; cursor: pointer;
+  font: inherit; font-weight: 700; color: var(--volt);
+}
+.auth__hint { margin-top: 16px; text-align: center; }
 
-.roles { display: grid; gap: 10px; margin-bottom: 18px; }
-.role {
-  display: flex; align-items: center; gap: 13px; text-align: left;
-  padding: 14px 15px; border-radius: var(--r-lg); cursor: pointer;
-  border: 1px solid var(--line); background: #fff; width: 100%;
+.social { display: grid; gap: 10px; }
+.social__btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; min-height: 52px; padding: 0 16px;
+  border-radius: 14px; border: 1px solid transparent;
+  font-weight: 700; font-size: 15px; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(28,28,30,.04);
+  transition: transform .06s ease, opacity .15s ease;
 }
-.role[aria-pressed='true'] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
-.role__key {
-  font-family: var(--disp); font-weight: 800; font-size: 15px;
-  width: 34px; height: 34px; flex: none; border-radius: 9px;
-  display: grid; place-items: center; background: var(--line-2); color: var(--ink-2);
+.social__btn:active { transform: translateY(1px); }
+.social__mark {
+  width: 22px; height: 22px; border-radius: 7px;
+  display: grid; place-items: center;
+  font-family: var(--disp); font-weight: 800; font-size: 12px;
 }
-.role[aria-pressed='true'] .role__key { background: var(--volt); color: var(--volt-ink); }
-.role__name { font-weight: 700; font-size: 14.5px; }
-.role__desc { font-size: 12.5px; color: var(--ink-2); }
+.social__btn--kakao {
+  background: #FEE500; color: #191600; border-color: #F0DC00;
+}
+.social__btn--kakao .social__mark { background: rgba(0,0,0,.08); }
+.social__btn--naver {
+  background: #03C75A; color: #fff; border-color: #02B350;
+}
+.social__btn--naver .social__mark { background: rgba(0,0,0,.12); color: #fff; }
+.social__btn--apple {
+  background: #1C1C1E; color: #fff; border-color: #1C1C1E;
+}
+
+.auth__foot {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin-top: 20px; padding: 14px 12px;
+  border-radius: var(--r-lg); background: rgba(255,255,255,.7);
+  border: 1px solid var(--line);
+}
+.auth__foot-link {
+  padding: 4px 2px; border: 0; background: none; cursor: pointer;
+  font-size: 12.5px; font-weight: 600; color: var(--ink-3);
+}
+.auth__foot-link:hover { color: var(--volt); }
+.auth__foot-sep { color: var(--line); font-size: 12px; user-select: none; }
+
+.auth-tabs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  margin: 8px 0 18px; border: 1px solid var(--line);
+  border-radius: 14px; overflow: hidden; background: #fff;
+  box-shadow: var(--shadow);
+}
+.auth-tabs__btn {
+  min-height: 44px; border: 0; background: transparent; cursor: pointer;
+  font-size: 13.5px; font-weight: 600; color: var(--ink-3);
+}
+.auth-tabs__btn[aria-selected='true'] {
+  background: var(--volt); color: #fff;
+}
+
+/* ---------- 카닥식 홈 · 지역 · PT 역경매 ---------- */
+.home-loc { margin: -4px 0 8px; }
+.home-q {
+  margin: 8px 2px 14px; font-size: 22px; font-weight: 800;
+  letter-spacing: -.03em; line-height: 1.3;
+}
+
+.loc { position: relative; }
+.loc__btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 4px; border: 0; background: none; cursor: pointer;
+  font-size: 16px; font-weight: 800; letter-spacing: -.02em; color: var(--ink);
+}
+.loc__pin { font-size: 14px; }
+.loc__chev { font-size: 12px; color: var(--ink-3); margin-left: 2px; }
+.loc__menu {
+  position: absolute; left: 0; top: calc(100% + 4px); z-index: 40;
+  min-width: 220px; padding: 6px; border-radius: 14px;
+  background: #fff; box-shadow: var(--shadow); border: 1px solid var(--line);
+}
+.loc__opt {
+  display: block; width: 100%; text-align: left;
+  padding: 12px 12px; border: 0; border-radius: 10px;
+  background: none; cursor: pointer; font-size: 14px; font-weight: 600;
+}
+.loc__opt[aria-selected='true'] { background: var(--volt-bg); color: var(--volt-ink); }
+.loc__opt:hover { background: var(--line-2); }
+
+.svc {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-bottom: 12px;
+}
+.svc__card {
+  position: relative; text-align: left;
+  min-height: 148px; padding: 16px 14px 14px;
+  border: 0; border-radius: var(--r-lg); background: #fff;
+  box-shadow: var(--shadow); cursor: pointer;
+  overflow: hidden;
+}
+.svc__badge {
+  display: inline-flex; padding: 3px 8px; border-radius: 6px;
+  font-size: 11px; font-weight: 700; color: #fff;
+  background: #FF5A6A; margin-bottom: 10px;
+}
+.svc__badge--sky { background: var(--volt); }
+.svc__title { display: block; font-size: 17px; font-weight: 800; letter-spacing: -.02em; }
+.svc__desc {
+  display: block; margin-top: 6px; font-size: 12.5px;
+  color: var(--ink-2); line-height: 1.4;
+}
+.svc__art {
+  position: absolute; right: 10px; bottom: 8px;
+  font-family: var(--disp); font-weight: 800; font-size: 28px;
+  color: var(--volt); opacity: .35; letter-spacing: -.04em;
+}
+.svc__art--dim { color: var(--ink-3); }
+
+.promo {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  text-align: left; margin-bottom: 12px; padding: 16px 16px;
+  border: 0; border-radius: var(--r-lg); cursor: pointer;
+  background: linear-gradient(135deg, #E8F4FF 0%, #F0F7FF 55%, #EEF2FF 100%);
+  box-shadow: var(--shadow);
+}
+.promo__eyebrow {
+  margin: 0 0 4px; font-size: 11.5px; font-weight: 700; color: var(--volt-ink);
+}
+.promo__title {
+  margin: 0; font-size: 15.5px; font-weight: 800; letter-spacing: -.02em; color: var(--ink);
+}
+.promo__sub { margin: 4px 0 0; font-size: 12.5px; color: var(--ink-2); }
+.promo__go { font-size: 22px; color: var(--volt); font-weight: 700; }
+
+.chip--pick {
+  background: var(--volt); color: #fff; border: 0; cursor: pointer;
+}
+button.chip {
+  border: 0; cursor: pointer; font: inherit;
+}
+.card--picked { box-shadow: 0 0 0 2px var(--volt), var(--shadow); }
 
 /* ---------- 유틸 ---------- */
 .stack-y > * + * { margin-top: 10px; }
@@ -302,11 +467,11 @@ a { color: inherit; }
    아직 안 올라온 자리는 회색 사각형 대신 은은한 색면으로 둔다 —
    "빈 곳"처럼 보이지 않아야 관장이 채우고 싶어진다. */
 .photo {
-  position: relative; border-radius: 10px; overflow: hidden;
+  position: relative; border-radius: 14px; overflow: hidden;
   background: var(--line-2); flex: none;
   width: 108px; height: 78px;
 }
-.photo--sm { width: 76px; height: 56px; border-radius: 8px; }
+.photo--sm { width: 76px; height: 56px; border-radius: 10px; }
 .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .photo__ph { display: block; width: 100%; height: 100%; }
 .photo__cap {

@@ -95,10 +95,20 @@ export const SAVED_ROUTINES = [
   { id: 'r-3', gym_id: 'g-1', title: '박서연 트레이너가 보낸 숙제', days: 2, goal: 'hypertrophy', updated: '2026-07-26', origin: 'trainer', note: '이번 주는 하체 위주로. 무릎 아프면 레그프레스 발 위치 높이세요.' },
 ];
 
-/* 트레이너가 만들어 둔 루틴 (송출 대상) */
+/* 트레이너가 만들어 둔 루틴 (송출·숙제 원본) */
 export const TRAINER_ROUTINES = [
-  { id: 'tr-1', gym_id: 'g-1', title: '입문자 전신 2분할', days: 2, goal: 'hypertrophy', updated: '2026-07-20', origin: 'trainer' },
-  { id: 'tr-2', gym_id: 'g-1', title: '감량 4주 · 유산소 포함', days: 4, goal: 'fatloss', updated: '2026-07-18', origin: 'trainer' },
+  { id: 'tr-1', gym_id: 'g-1', title: '입문자 전신 2분할', days: 2, goal: 'hypertrophy', level: 1, updated: '2026-07-20', origin: 'trainer' },
+  { id: 'tr-2', gym_id: 'g-1', title: '감량 4주 · 유산소 포함', days: 4, goal: 'fatloss', level: 2, updated: '2026-07-18', origin: 'trainer' },
+  { id: 'tr-3', gym_id: 'g-1', title: '하체 집중 · 무릎 케어', days: 3, goal: 'hypertrophy', level: 2, updated: '2026-07-25', origin: 'trainer' },
+];
+
+/* 트레이너 → 회원 숙제 전송 기록 */
+export const HOMEWORK_LOG = [
+  {
+    id: 'hw-1', member_id: 'u-member', routine_id: 'tr-1',
+    title: '박서연 트레이너가 보낸 숙제', note: '이번 주는 하체 위주로. 무릎 아프면 레그프레스 발 위치 높이세요.',
+    due: '2026-08-02', sent_at: '2026-07-26',
+  },
 ];
 
 /* ---------- 체성분 기록 ---------- */
@@ -122,4 +132,122 @@ export const GYM_ROSTER = [
   { id:'m-3', name:'정우성', plan:'6개월 회원권', starts:'2026-02-01', ends:'2026-07-31', paid:390000, active:true },
   { id:'m-4', name:'한지민', plan:'3개월 회원권', starts:'2026-07-20', ends:'2026-10-19', paid:240000, active:true },
   { id:'m-5', name:'오세훈', plan:'6개월 회원권', starts:'2026-01-10', ends:'2026-07-09', paid:360000, active:false },
+];
+
+/* ---------- 지역 (카닥식 위치 선택) ---------- */
+export const AREAS = [
+  { id: 'b-seomyeon', label: '부산진구 서면', city: '부산', dong: '부전동' },
+  { id: 'b-jeonpo',   label: '부산진구 전포', city: '부산', dong: '전포동' },
+  { id: 'b-haeundae', label: '해운대구 우동', city: '부산', dong: '우동' },
+  { id: 'b-nampo',    label: '중구 남포',     city: '부산', dong: '남포동' },
+];
+
+export const LOCATION = { areaId: 'b-seomyeon' };
+
+/* ---------- 트레이너 이력서(공개 프로필) ---------- */
+export const TRAINERS = [
+  {
+    id: 'u-trainer', name: '박서연', gym_id: 'g-1', gym_name: '서면 스트렝스짐',
+    area_id: 'b-seomyeon', distance_m: 320,
+    headline: '근비대 · 자세교정 6년',
+    bio: '서면에서 6년째. 무릎·어깨 아픈 분 많이 봐왔어요. 무리한 중량보다 폼 먼저.',
+    specialties: ['근비대', '자세교정', '하체'],
+    years: 6, rating_avg: 4.9, review_count: 128, sessions_done: 2100,
+    certs: ['NSCA-CPT', '생활스포츠지도사 2급'],
+    price_per_session: 65000, accepts_new: true,
+  },
+  {
+    id: 'tr-2', name: '강민호', gym_id: 'g-1', gym_name: '서면 스트렝스짐',
+    area_id: 'b-seomyeon', distance_m: 410,
+    headline: '다이어트 · 체형관리',
+    bio: '감량 후 요요 막는 루틴이 강점. 식단은 강요하지 않고 현실적으로 잡습니다.',
+    specialties: ['감량', '체형'],
+    years: 4, rating_avg: 4.7, review_count: 86, sessions_done: 980,
+    certs: ['KATA 자격'],
+    price_per_session: 55000, accepts_new: true,
+  },
+  {
+    id: 'tr-3', name: '윤지아', gym_id: 'g-2', gym_name: '전포 헬스클럽',
+    area_id: 'b-jeonpo', distance_m: 780,
+    headline: '여성 · 입문 전문',
+    bio: '헬스장 처음이어도 괜찮아요. 기구 사용법부터 천천히.',
+    specialties: ['입문', '여성'],
+    years: 3, rating_avg: 4.8, review_count: 64, sessions_done: 540,
+    certs: ['생활스포츠지도사 2급'],
+    price_per_session: 50000, accepts_new: true,
+  },
+  {
+    id: 'tr-4', name: '한도윤', gym_id: 'g-3', gym_name: '해운대 바디랩',
+    area_id: 'b-haeundae', distance_m: 4500,
+    headline: '스트렝스 · 파워리프팅',
+    bio: '스쿼트·데드 폼 잡는 데 집중. 대회 준비도 가능.',
+    specialties: ['스트렝스', '파워리프팅'],
+    years: 8, rating_avg: 4.9, review_count: 201, sessions_done: 3200,
+    certs: ['NSCA-CSCS'],
+    price_per_session: 80000, accepts_new: true,
+  },
+];
+
+/* ---------- PT 역경매: 요청 → 지원 → 선택 ---------- */
+export const PT_REQUESTS = [
+  {
+    id: 'req-1',
+    member_id: 'u-other',
+    member_name: '이서준',
+    area_id: 'b-seomyeon',
+    dong: '부산진구 부전동',
+    distance_m: 450,
+    goal: '근비대',
+    sessions: 20,
+    budget_max: 1300000,
+    schedule: '평일 저녁',
+    note: '하체 위주로 키우고 싶어요. 무릎이 좀 안 좋습니다.',
+    status: 'open', // open | matched | closed
+    created: '2026-07-28',
+  },
+  {
+    id: 'req-2',
+    member_id: 'u-other-2',
+    member_name: '박하늘',
+    area_id: 'b-seomyeon',
+    dong: '부산진구 부전동',
+    distance_m: 600,
+    goal: '감량',
+    sessions: 10,
+    budget_max: 600000,
+    schedule: '주말 오전',
+    note: '헬스 입문입니다. 친절한 분 찾아요.',
+    status: 'open',
+    created: '2026-07-29',
+  },
+  {
+    id: 'req-3',
+    member_id: 'u-other-3',
+    member_name: '최유진',
+    area_id: 'b-jeonpo',
+    dong: '부산진구 전포동',
+    distance_m: 900,
+    goal: '자세교정',
+    sessions: 12,
+    budget_max: 720000,
+    schedule: '평일 낮',
+    note: '거북목·라운드숄더 교정 원합니다.',
+    status: 'open',
+    created: '2026-07-27',
+  },
+];
+
+export const PT_APPLICATIONS = [
+  {
+    id: 'app-1', request_id: 'req-1', trainer_id: 'tr-2',
+    message: '무릎 부담 적은 하체 루틴으로 20회 구성해 드릴게요. 레그프레스·힙힌지 위주.',
+    proposed_price: 1100000, proposed_per: 55000,
+    status: 'pending', created: '2026-07-28',
+  },
+  {
+    id: 'app-2', request_id: 'req-2', trainer_id: 'u-trainer',
+    message: '입문자 감량 10회 패키지. 식단은 현실 가능한 선만 제안합니다.',
+    proposed_price: 550000, proposed_per: 55000,
+    status: 'pending', created: '2026-07-29',
+  },
 ];

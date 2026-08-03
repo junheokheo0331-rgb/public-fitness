@@ -100,12 +100,15 @@ export default function TrainerPublic() {
         </Link>
       </Card>
 
-      <button type="button" className="btn btn--block" onClick={() => nav('/pt/new')}>
+      <button type="button" className="btn btn--block" onClick={() => nav(`/book?trainer=${t.id}`)}>
+        PT 예약하기
+      </button>
+      <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: 8 }} onClick={() => nav('/pt/new')}>
         이 분에게 PT 받고 싶어요 (신청 올리기)
       </button>
       <Note style={{ marginTop: 12 }}>
         <p className="small">
-          신청을 올리면 근처 트레이너가 제안서를 보냅니다. 프로필을 보고 고르세요.
+          이미 등록된 PT가 있으면 캘린더에서 바로 예약하세요. 새 트레이너를 찾으면 신청을 올려 제안서를 받을 수 있습니다.
         </p>
       </Note>
     </>

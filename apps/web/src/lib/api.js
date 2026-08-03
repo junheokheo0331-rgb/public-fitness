@@ -12,6 +12,10 @@ import { createClient } from '@supabase/supabase-js';
 import * as M from './mock.js';
 import { MACHINES, availableFor, machineImpact as mockImpact } from './catalog.js';
 import { statsFromSession } from '@gymlink/core/progress';
+import { buildRoutine } from '@gymlink/core/routine';
+import {
+  buildSlots, expandFixedInstances, syncClientNext, dateStrLocal, toLocalISO, formatHM, parseHM,
+} from './booking.js';
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -84,6 +88,197 @@ export async function mySavedRoutines(gymId) {
   const { data } = await sb.from('routines').select('*')
     .eq('gym_id', gymId).order('updated_at', { ascending: false });
   return data ?? [];
+}
+
+/** 관장이 공개한 추천 루틴 (템플릿) */
+export async function listGymTemplates(gymId) {
+  if (!sb) {
+    await wait();
+    const fromOwner = M.OWNER_TEMPLATES.filter((r) => r.gym_id === gymId && r.is_public !== false);
+    const fromSaved = M.SAVED_ROUTINES.filter(
+      (r) => r.gym_id === gymId && r.origin === 'owner' && r.is_template,
+    );
+    const seen = new Set();
+    const out = [];
+    for (const r of [...fromOwner, ...fromSaved]) {
+      if (seen.has(r.id) || seen.has(r.title)) continue;
+      seen.add(r.id); seen.add(r.title);
+      out.push(r);
+    }
+    return out;
+  }
+  return [];
+}
+
+/** 템플릿 → 내 루틴으로 복사 */
+export async function copyRoutine(templateId, gymId) {
+  if (!sb) {
+    await wait(200);
+    const src = M.OWNER_TEMPLATES.find((r) => r.id === templateId)
+      || M.SAVED_ROUTINES.find((r) => r.id === templateId)
+      || M.TRAINER_ROUTINES.find((r) => r.id === templateId);
+    if (!src) throw new Error('루틴을 찾을 수 없습니다');
+    const id = `r-${Date.now()}`;
+    const row = {
+      ...JSON.parse(JSON.stringify(src)),
+      id,
+      gym_id: gymId || src.gym_id,
+      origin: src.origin === 'trainer' ? 'trainer' : 'member',
+      is_template: false,
+      is_public: false,
+      title: src.origin === 'owner' ? `${src.title}` : src.title,
+      note: src.origin === 'owner' ? '관장님 추천에서 가져옴' : src.note || null,
+      updated: new Date().toISOString().slice(0, 10),
+      body: src.body ? JSON.parse(JSON.stringify(src.body)) : null,
+    };
+    M.SAVED_ROUTINES.unshift(row);
+    return id;
+  }
+  const { data, error } = await sb.rpc('copy_routine', { p_routine_id: templateId });
+  if (error) throw error;
+  return data;
+}
+
+/** 내 헬스장 기구로 자동 루틴 생성·저장 */
+export async function createAutoRoutine({
+  gymId, days = 3, goal = 'hypertrophy', level = 2, title,
+}) {
+  if (!sb) {
+    await wait(220);
+    const gym = M.GYMS.find((g) => g.id === gymId);
+    if (!gym) throw new Error('헬스장을 찾을 수 없습니다');
+    const available = availableFor(gym.machines, level);
+    const body = buildRoutine({ available, daysPerWeek: days, goal, level, stats: {} });
+    const id = `r-${Date.now()}`;
+    const row = {
+      id,
+      gym_id: gymId,
+      title: title || `기구 맞춤 · 주 ${body.days.length}회`,
+      days: body.days.length,
+      goal,
+      level,
+      origin: 'auto',
+      body,
+      warnings: body.warnings || [],
+      updated: new Date().toISOString().slice(0, 10),
+    };
+    M.SAVED_ROUTINES.unshift(row);
+    return row;
+  }
+  return null;
+}
+
+/** 보유 기구 기준으로 자동 루틴 재생성 · 숙제/추천은 경고만 */
+export async function reconcileGymRoutines(gymId) {
+  if (!sb) {
+    await wait(180);
+    const gym = M.GYMS.find((g) => g.id === gymId);
+    if (!gym) return { rebuilt: 0, flagged: 0 };
+    const codes = new Set(
+      availableFor(gym.machines, 3).map((e) => e.code || e.exercise_code),
+    );
+    let rebuilt = 0;
+    let flagged = 0;
+
+    for (const r of M.SAVED_ROUTINES) {
+      if (r.gym_id !== gymId) continue;
+      if (r.origin === 'auto') {
+        const body = buildRoutine({
+          available: availableFor(gym.machines, r.level || 2),
+          daysPerWeek: r.days || 3,
+          goal: r.goal || 'hypertrophy',
+          level: r.level || 2,
+          stats: {},
+        });
+        r.body = body;
+        r.days = body.days.length;
+        r.warnings = body.warnings || [];
+        r.stale = false;
+        r.updated = new Date().toISOString().slice(0, 10);
+        rebuilt += 1;
+        continue;
+      }
+      /* trainer/owner/member 사본 — 없는 기구만 표시 */
+      const missing = [];
+      for (const day of r.body?.days || []) {
+        for (const it of day.items || []) {
+          const code = it.exercise_code;
+          if (!code || it.duration_min) continue;
+          if (it.is_freeform) continue;
+          if (!codes.has(code)) missing.push(it.name || code);
+        }
+      }
+      if (missing.length) {
+        r.stale = true;
+        r.warnings = [`이 헬스장에 없는 기구/종목: ${[...new Set(missing)].join(', ')}`];
+        flagged += 1;
+      } else {
+        r.stale = false;
+        if (r.warnings?.length && String(r.warnings[0]).startsWith('이 헬스장에 없는')) {
+          r.warnings = [];
+        }
+      }
+    }
+
+    /* 관장 템플릿도 기구 변경 시 재생성 */
+    for (const t of M.OWNER_TEMPLATES) {
+      if (t.gym_id !== gymId) continue;
+      const body = buildRoutine({
+        available: availableFor(gym.machines, t.level || 1),
+        daysPerWeek: t.days || 3,
+        goal: t.goal || 'hypertrophy',
+        level: t.level || 1,
+        stats: {},
+      });
+      t.body = body;
+      t.days = body.days.length;
+      t.updated = new Date().toISOString().slice(0, 10);
+      rebuilt += 1;
+    }
+    return { rebuilt, flagged };
+  }
+  return { rebuilt: 0, flagged: 0 };
+}
+
+/** 관장이 추천 루틴 게시 */
+export async function saveOwnerTemplate({
+  gymId, title, goal = 'hypertrophy', level = 1, days = 3, body, templateId,
+}) {
+  if (!sb) {
+    await wait(200);
+    const built = body || buildRoutine({
+      available: availableFor(M.GYMS.find((g) => g.id === gymId)?.machines || [], level),
+      daysPerWeek: days,
+      goal,
+      level,
+      stats: {},
+    });
+    const id = templateId || `ot-${Date.now()}`;
+    const row = {
+      id,
+      gym_id: gymId,
+      title: title || '관장 추천 루틴',
+      days: built.days?.length || days,
+      goal,
+      level,
+      origin: 'owner',
+      is_template: true,
+      is_public: true,
+      body: built,
+      updated: new Date().toISOString().slice(0, 10),
+    };
+    const i = M.OWNER_TEMPLATES.findIndex((t) => t.id === id);
+    if (i >= 0) M.OWNER_TEMPLATES[i] = row;
+    else M.OWNER_TEMPLATES.unshift(row);
+    /* 회원 목록에도 owner 칩으로 보이게 미러 */
+    const mirrorId = `r-owner-${id}`;
+    const mi = M.SAVED_ROUTINES.findIndex((r) => r.id === mirrorId || (r.origin === 'owner' && r.is_template && r.title === row.title));
+    const mirror = { ...row, id: mirrorId, origin: 'owner', is_template: true };
+    if (mi >= 0) M.SAVED_ROUTINES[mi] = mirror;
+    else M.SAVED_ROUTINES.unshift(mirror);
+    return id;
+  }
+  return null;
 }
 
 /* ---------- 루틴 저장 · 송출 ----------
@@ -206,6 +401,7 @@ export async function assignRoutine({ memberId, routineId, note, dueDate }) {
       id: `hw-${Date.now()}`,
       member_id: memberId,
       routine_id: src.id,
+      saved_id: copy.id,
       title,
       note: note || null,
       due: dueDate || null,
@@ -292,7 +488,11 @@ export async function revokeConsent(kind) {
 /* ---------- 트레이너 ---------- */
 
 export async function myClients() {
-  if (!sb) { await wait(); return M.MY_CLIENTS; }
+  if (!sb) {
+    await wait();
+    ensureFixedBookings('u-trainer');
+    return M.MY_CLIENTS;
+  }
   const { data } = await sb.from('pt_ledger').select('member_id, total_sessions, used_sessions, profiles(name)');
   return data ?? [];
 }
@@ -374,6 +574,7 @@ export async function setGymMachines(gymId, codes) {
     await wait(150);
     const g = M.GYMS.find((x) => x.id === gymId);
     if (g) g.machines = [...codes];
+    await reconcileGymRoutines(gymId);
     return codes;
   }
   await sb.from('gym_machines').delete().eq('gym_id', gymId);
@@ -730,6 +931,225 @@ export async function listWorkoutSessions(limit = 20) {
       }
     }
     return rows;
+  }
+  return [];
+}
+
+/* ---------- PT 예약 (캘린더 · 슬롯 · 고정 일정) ---------- */
+
+function ensureFixedBookings(trainerId) {
+  const sched = M.TRAINER_SCHEDULES[trainerId];
+  const fixed = M.FIXED_SESSIONS.filter((f) => f.trainer_id === trainerId && f.active !== false);
+  const duration = sched?.durationMin || 50;
+  const extras = expandFixedInstances(fixed, M.PT_BOOKINGS, 8, duration);
+  for (const row of extras) {
+    if (!M.PT_BOOKINGS.some((b) => b.id === row.id)) M.PT_BOOKINGS.push(row);
+  }
+  syncClientNext(M.MY_CLIENTS, M.PT_BOOKINGS);
+}
+
+export async function getTrainerSchedule(trainerId) {
+  if (!sb) {
+    await wait();
+    const id = trainerId || 'u-trainer';
+    const base = M.TRAINER_SCHEDULES[id] || {
+      durationMin: 50, slotStepMin: 60,
+      weekly: { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] },
+      closedDates: [],
+    };
+    return {
+      trainer_id: id,
+      ...JSON.parse(JSON.stringify(base)),
+      fixed: M.FIXED_SESSIONS.filter((f) => f.trainer_id === id),
+    };
+  }
+  return null;
+}
+
+export async function saveTrainerSchedule(trainerId, patch) {
+  if (!sb) {
+    await wait(120);
+    const id = trainerId || 'u-trainer';
+    const cur = M.TRAINER_SCHEDULES[id] || {
+      durationMin: 50, slotStepMin: 60,
+      weekly: { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] },
+      closedDates: [],
+    };
+    M.TRAINER_SCHEDULES[id] = {
+      ...cur,
+      durationMin: patch.durationMin ?? cur.durationMin,
+      slotStepMin: patch.slotStepMin ?? cur.slotStepMin,
+      weekly: patch.weekly ?? cur.weekly,
+      closedDates: patch.closedDates ?? cur.closedDates,
+    };
+    return M.TRAINER_SCHEDULES[id];
+  }
+  return null;
+}
+
+export async function listFixedSessions(trainerId) {
+  if (!sb) {
+    await wait();
+    const id = trainerId || 'u-trainer';
+    return M.FIXED_SESSIONS.filter((f) => f.trainer_id === id);
+  }
+  return [];
+}
+
+export async function createFixedSession({ memberId, weekday, time, durationMin, note }) {
+  if (!sb) {
+    await wait(150);
+    const client = M.MY_CLIENTS.find((c) => c.id === memberId);
+    if (!client) throw new Error('담당 회원이 아닙니다');
+    const row = {
+      id: `fx-${Date.now()}`,
+      trainer_id: 'u-trainer',
+      member_id: memberId,
+      member_name: client.name,
+      weekday: Number(weekday),
+      time,
+      durationMin: durationMin || M.TRAINER_SCHEDULES['u-trainer']?.durationMin || 50,
+      note: note || '고정 PT',
+      active: true,
+      created: dateStrLocal(new Date()),
+    };
+    M.FIXED_SESSIONS.push(row);
+    ensureFixedBookings('u-trainer');
+    return row;
+  }
+  return null;
+}
+
+export async function deleteFixedSession(fixedId) {
+  if (!sb) {
+    await wait(100);
+    const fx = M.FIXED_SESSIONS.find((f) => f.id === fixedId);
+    if (!fx) return false;
+    fx.active = false;
+    for (const b of M.PT_BOOKINGS) {
+      if (b.fixed_id === fixedId && b.status === 'booked' && new Date(b.starts_at) > new Date()) {
+        b.status = 'cancelled';
+      }
+    }
+    syncClientNext(M.MY_CLIENTS, M.PT_BOOKINGS);
+    return true;
+  }
+  return false;
+}
+
+export async function listAvailableSlots(trainerId, fromDate, toDate) {
+  if (!sb) {
+    await wait(80);
+    const id = trainerId || M.MY_PT.trainer_id || 'u-trainer';
+    ensureFixedBookings(id);
+    const schedule = M.TRAINER_SCHEDULES[id];
+    const bookings = M.PT_BOOKINGS.filter((b) => b.trainer_id === id);
+    const fixed = M.FIXED_SESSIONS.filter((f) => f.trainer_id === id);
+    return buildSlots({
+      schedule,
+      bookings,
+      fixed,
+      fromDate: fromDate || dateStrLocal(new Date()),
+      toDate: toDate || dateStrLocal(new Date(Date.now() + 28 * 86400000)),
+    });
+  }
+  return [];
+}
+
+export async function listMyBookings() {
+  if (!sb) {
+    await wait();
+    ensureFixedBookings(M.MY_PT.trainer_id || 'u-trainer');
+    return M.PT_BOOKINGS
+      .filter((b) => b.member_id === 'u-member')
+      .slice()
+      .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+  }
+  return [];
+}
+
+export async function listTrainerBookings({ from, to } = {}) {
+  if (!sb) {
+    await wait();
+    ensureFixedBookings('u-trainer');
+    let rows = M.PT_BOOKINGS.filter((b) => b.trainer_id === 'u-trainer');
+    if (from) rows = rows.filter((b) => dateStrLocal(new Date(b.starts_at)) >= from);
+    if (to) rows = rows.filter((b) => dateStrLocal(new Date(b.starts_at)) <= to);
+    return rows.slice().sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+  }
+  return [];
+}
+
+export async function createBooking({ trainerId, startsAt, memberId }) {
+  if (!sb) {
+    await wait(180);
+    const tid = trainerId || M.MY_PT.trainer_id || 'u-trainer';
+    const mid = memberId || 'u-member';
+    const sched = M.TRAINER_SCHEDULES[tid];
+    const duration = sched?.durationMin || 50;
+    const start = new Date(startsAt);
+    if (Number.isNaN(start.getTime())) throw new Error('잘못된 시각입니다');
+    const ds = dateStrLocal(start);
+    const hm = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
+    const ends_at = toLocalISO(ds, formatHM(parseHM(hm) + duration));
+
+    const slots = buildSlots({
+      schedule: sched,
+      bookings: M.PT_BOOKINGS.filter((b) => b.trainer_id === tid),
+      fixed: M.FIXED_SESSIONS.filter((f) => f.trainer_id === tid),
+      fromDate: ds,
+      toDate: ds,
+    });
+    const slot = slots.find((s) => s.starts_at === toLocalISO(ds, hm) && s.available);
+    if (!slot) throw new Error('이미 예약되었거나 예약 불가 시간입니다');
+
+    const left = M.MY_PT.total_sessions - M.MY_PT.used_sessions;
+    if (mid === 'u-member' && left <= 0) throw new Error('남은 PT 횟수가 없습니다');
+
+    const client = M.MY_CLIENTS.find((c) => c.id === mid);
+    const trainer = M.TRAINERS.find((t) => t.id === tid);
+    const row = {
+      id: `bk-${Date.now()}`,
+      trainer_id: tid,
+      member_id: mid,
+      member_name: client?.name || '회원',
+      trainer_name: trainer?.name,
+      starts_at: toLocalISO(ds, hm),
+      ends_at,
+      status: 'booked',
+      kind: 'booked',
+      fixed_id: null,
+      note: null,
+    };
+    M.PT_BOOKINGS.push(row);
+    syncClientNext(M.MY_CLIENTS, M.PT_BOOKINGS);
+    return row;
+  }
+  return null;
+}
+
+export async function cancelBooking(bookingId) {
+  if (!sb) {
+    await wait(100);
+    const row = M.PT_BOOKINGS.find((b) => b.id === bookingId);
+    if (!row || row.status === 'cancelled') return null;
+    row.status = 'cancelled';
+    syncClientNext(M.MY_CLIENTS, M.PT_BOOKINGS);
+    return row;
+  }
+  return null;
+}
+
+export async function myBookableTrainers() {
+  if (!sb) {
+    await wait();
+    const ids = new Set();
+    if (M.MY_PT.trainer_id) ids.add(M.MY_PT.trainer_id);
+    for (const b of M.PT_BOOKINGS) {
+      if (b.member_id === 'u-member') ids.add(b.trainer_id);
+    }
+    const list = M.TRAINERS.filter((t) => ids.has(t.id) || t.gym_id === M.MY_PT.gym_id);
+    return list.length ? list : M.TRAINERS.filter((t) => t.accepts_new !== false).slice(0, 3);
   }
   return [];
 }

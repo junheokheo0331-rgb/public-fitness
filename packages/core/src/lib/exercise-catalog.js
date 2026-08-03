@@ -141,12 +141,12 @@ export function editableToItem(ex) {
     return {
       id: ex.id,
       exercise_code: ex.exercise_code || 'CARDIO',
-      name: ex.name || 'Zone2 유산소',
+      name: ex.name || '유산소',
       machine_code: ex.machine_code || null,
       machine_name: ex.equip || null,
       sets: 1,
-      duration_min: ex.targetMin || 30,
-      intensity: 'Zone2',
+      duration_min: ex.targetMin || 20,
+      intensity: null,
       rest_sec: 0,
       note: ex.note || null,
     };

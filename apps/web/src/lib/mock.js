@@ -9,6 +9,9 @@
    화면 코드는 mock 을 직접 import 하지 않는다. 항상 api.js 를 거친다.
    ============================================================ */
 
+import { buildRoutine } from '@gymlink/core/routine';
+import { availableFor } from './catalog.js';
+
 export const ME = {
   member:  { id: 'u-member',  name: '김지훈', role: 'member' },
   trainer: { id: 'u-trainer', name: '박서연', role: 'trainer' },
@@ -84,32 +87,80 @@ export const MY_MEMBERSHIP = {
 };
 
 export const MY_PT = {
-  id: 'pt-1', gym_id: 'g-1', trainer_name: '박서연',
+  id: 'pt-1', gym_id: 'g-1', trainer_id: 'u-trainer', trainer_name: '박서연',
   paid_amount: 1200000, list_price: 1400000, total_sessions: 20, used_sessions: 7,
 };
 
 /* ---------- 저장된 루틴 ---------- */
 export const SAVED_ROUTINES = [
-  { id: 'r-1', gym_id: 'g-1', title: '주 3회 전신 · 근비대', days: 3, goal: 'hypertrophy', updated: '2026-07-24', origin: 'auto' },
-  { id: 'r-2', gym_id: 'g-1', title: '관장님 추천 · 입문 3분할', days: 3, goal: 'hypertrophy', updated: '2026-06-11', origin: 'owner' },
-  { id: 'r-3', gym_id: 'g-1', title: '박서연 트레이너가 보낸 숙제', days: 2, goal: 'hypertrophy', updated: '2026-07-26', origin: 'trainer', note: '이번 주는 하체 위주로. 무릎 아프면 레그프레스 발 위치 높이세요.' },
+  { id: 'r-1', gym_id: 'g-1', title: '주 3회 전신 · 근비대', days: 3, goal: 'hypertrophy', level: 2, updated: '2026-07-24', origin: 'auto', body: null },
+  { id: 'r-2', gym_id: 'g-1', title: '관장님 추천 · 입문 3분할', days: 3, goal: 'hypertrophy', level: 1, updated: '2026-06-11', origin: 'owner', is_template: true, body: null },
+  {
+    id: 'r-3', gym_id: 'g-1', title: '박서연 트레이너가 보낸 숙제', days: 2, goal: 'hypertrophy', level: 2,
+    updated: '2026-07-26', origin: 'trainer',
+    note: '이번 주는 하체 위주로. 무릎 아프면 레그프레스 발 위치 높이세요.',
+    due: '2026-08-02', body: null,
+  },
 ];
 
 /* 트레이너가 만들어 둔 루틴 (송출·숙제 원본) */
 export const TRAINER_ROUTINES = [
-  { id: 'tr-1', gym_id: 'g-1', title: '입문자 전신 2분할', days: 2, goal: 'hypertrophy', level: 1, updated: '2026-07-20', origin: 'trainer' },
-  { id: 'tr-2', gym_id: 'g-1', title: '감량 4주 · 유산소 포함', days: 4, goal: 'fatloss', level: 2, updated: '2026-07-18', origin: 'trainer' },
-  { id: 'tr-3', gym_id: 'g-1', title: '하체 집중 · 무릎 케어', days: 3, goal: 'hypertrophy', level: 2, updated: '2026-07-25', origin: 'trainer' },
+  { id: 'tr-1', gym_id: 'g-1', title: '입문자 전신 2분할', days: 2, goal: 'hypertrophy', level: 1, updated: '2026-07-20', origin: 'trainer', body: null },
+  { id: 'tr-2', gym_id: 'g-1', title: '감량 4주 · 유산소 포함', days: 4, goal: 'fatloss', level: 2, updated: '2026-07-18', origin: 'trainer', body: null },
+  { id: 'tr-3', gym_id: 'g-1', title: '하체 집중 · 무릎 케어', days: 3, goal: 'hypertrophy', level: 2, updated: '2026-07-25', origin: 'trainer', body: null },
+];
+
+/* 관장 공개 템플릿 (회원 "가져오기") — SAVED 의 owner+template 와 별도 보관함 */
+export const OWNER_TEMPLATES = [
+  {
+    id: 'ot-1', gym_id: 'g-1', title: '관장 추천 · 입문 3분할', days: 3, goal: 'hypertrophy', level: 1,
+    updated: '2026-06-11', origin: 'owner', is_template: true, is_public: true, body: null,
+  },
 ];
 
 /* 트레이너 → 회원 숙제 전송 기록 */
 export const HOMEWORK_LOG = [
   {
-    id: 'hw-1', member_id: 'u-member', routine_id: 'tr-1',
+    id: 'hw-1', member_id: 'u-member', routine_id: 'tr-1', saved_id: 'r-3',
     title: '박서연 트레이너가 보낸 숙제', note: '이번 주는 하체 위주로. 무릎 아프면 레그프레스 발 위치 높이세요.',
     due: '2026-08-02', sent_at: '2026-07-26',
   },
 ];
+
+/** 헬스장 기구로 buildRoutine 해서 body 시드 — GymLink 차별점의 시작점 */
+function seedGymBodies() {
+  const gym = GYMS.find((g) => g.id === 'g-1');
+  if (!gym) return;
+  const mk = (days, goal, level) => buildRoutine({
+    available: availableFor(gym.machines, level),
+    daysPerWeek: days,
+    goal,
+    level,
+    stats: {},
+  });
+
+  const auto = mk(3, 'hypertrophy', 2);
+  const owner = mk(3, 'hypertrophy', 1);
+  const hw = mk(2, 'hypertrophy', 2);
+  const tr1 = mk(2, 'hypertrophy', 1);
+  const tr2 = mk(4, 'fatloss', 2);
+  const tr3 = mk(3, 'hypertrophy', 2);
+
+  const byId = Object.fromEntries(SAVED_ROUTINES.map((r) => [r.id, r]));
+  if (byId['r-1']) { byId['r-1'].body = auto; byId['r-1'].days = auto.days.length; }
+  if (byId['r-2']) { byId['r-2'].body = owner; byId['r-2'].days = owner.days.length; }
+  if (byId['r-3']) { byId['r-3'].body = JSON.parse(JSON.stringify(hw)); byId['r-3'].days = hw.days.length; }
+
+  for (const t of TRAINER_ROUTINES) {
+    if (t.id === 'tr-1') { t.body = tr1; t.days = tr1.days.length; }
+    if (t.id === 'tr-2') { t.body = tr2; t.days = tr2.days.length; }
+    if (t.id === 'tr-3') { t.body = tr3; t.days = tr3.days.length; }
+  }
+  for (const t of OWNER_TEMPLATES) {
+    if (t.id === 'ot-1') { t.body = JSON.parse(JSON.stringify(owner)); t.days = owner.days.length; }
+  }
+}
+seedGymBodies();
 
 /* 운동 세션 로그 — workoutapp logs 이식 형태
    { [date]: { date, sessions:[{ id, routineId, dayIndex, startedAt, endedAt, exercises:[{code,name,sets:[{w,reps,rir,done}]}] }] } } */
@@ -299,5 +350,69 @@ export const PT_APPLICATIONS = [
     message: '입문자 감량 10회 패키지. 식단은 현실 가능한 선만 제안합니다.',
     proposed_price: 550000, proposed_per: 55000,
     status: 'pending', created: '2026-07-29',
+  },
+];
+
+/* ---------- PT 예약 (네이버 미용실식 슬롯) ----------
+   weekday: 0=월 … 6=일
+   weekly[day] = [{ start:'10:00', end:'14:00' }, ...]  영업 구간
+   fixed: 특정 회원 고정 반복 수업
+*/
+export const TRAINER_SCHEDULES = {
+  'u-trainer': {
+    durationMin: 50,
+    slotStepMin: 60,
+    weekly: {
+      0: [{ start: '10:00', end: '14:00' }, { start: '18:00', end: '21:00' }],
+      1: [{ start: '10:00', end: '14:00' }, { start: '18:00', end: '21:00' }],
+      2: [{ start: '10:00', end: '14:00' }, { start: '18:00', end: '21:00' }],
+      3: [{ start: '10:00', end: '14:00' }, { start: '18:00', end: '21:00' }],
+      4: [{ start: '10:00', end: '14:00' }, { start: '18:00', end: '21:00' }],
+      5: [{ start: '10:00', end: '15:00' }],
+      6: [],
+    },
+    closedDates: [],
+  },
+  'tr-2': {
+    durationMin: 50,
+    slotStepMin: 60,
+    weekly: {
+      0: [{ start: '09:00', end: '12:00' }, { start: '17:00', end: '20:00' }],
+      1: [{ start: '09:00', end: '12:00' }, { start: '17:00', end: '20:00' }],
+      2: [{ start: '09:00', end: '12:00' }, { start: '17:00', end: '20:00' }],
+      3: [{ start: '09:00', end: '12:00' }, { start: '17:00', end: '20:00' }],
+      4: [{ start: '09:00', end: '12:00' }, { start: '17:00', end: '20:00' }],
+      5: [],
+      6: [],
+    },
+    closedDates: [],
+  },
+};
+
+/** 트레이너가 잡아 둔 고정 일정 (매주 같은 요일·시각) */
+export const FIXED_SESSIONS = [
+  {
+    id: 'fx-1', trainer_id: 'u-trainer', member_id: 'u-member', member_name: '김지훈',
+    weekday: 1, time: '19:00', durationMin: 50, note: '고정 PT · 화 저녁',
+    active: true, created: '2026-07-01',
+  },
+  {
+    id: 'fx-2', trainer_id: 'u-trainer', member_id: 'c-2', member_name: '최민아',
+    weekday: 2, time: '11:00', durationMin: 50, note: '고정 PT · 수 오전',
+    active: true, created: '2026-07-10',
+  },
+];
+
+/** 단건 예약 (회원이 캘린더로 잡거나, 고정에서 생성된 인스턴스) */
+export const PT_BOOKINGS = [
+  {
+    id: 'bk-1', trainer_id: 'u-trainer', member_id: 'u-member', member_name: '김지훈',
+    starts_at: '2026-08-04T19:00:00', ends_at: '2026-08-04T19:50:00',
+    status: 'booked', kind: 'fixed', fixed_id: 'fx-1', note: '고정 PT',
+  },
+  {
+    id: 'bk-2', trainer_id: 'u-trainer', member_id: 'c-2', member_name: '최민아',
+    starts_at: '2026-08-05T11:00:00', ends_at: '2026-08-05T11:50:00',
+    status: 'booked', kind: 'fixed', fixed_id: 'fx-2', note: '고정 PT',
   },
 ];

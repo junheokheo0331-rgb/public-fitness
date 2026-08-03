@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { buildRoutine } from '@gymlink/core/routine';
-import { targetsForItem, blankSets } from '@gymlink/core/progress';
+import { targetsForItem, blankSets, progressiveOverloadLines } from '@gymlink/core/progress';
 import { TopBar, Card, Chip, Note, Stack, Empty } from '../../ui/bits.jsx';
+import SortableList, { reorder } from '../../ui/SortableList.jsx';
 import {
   getSavedRoutine, availableExercises, myMembership,
   getExerciseStats, lastSetsForExercise, saveWorkoutSession,
 } from '../../lib/api.js';
 
-/* workoutapp 운동 기록 UI 이식 — 세트별 무게·반복·RIR 체크 */
+/* 세트별 무게·반복·RIR 기록 */
 
 export default function WorkoutSession() {
   const { routineId } = useParams();
@@ -107,6 +108,8 @@ export default function WorkoutSession() {
     }));
   };
 
+  const onReorder = (from, to) => setRows((prev) => reorder(prev, from, to));
+
   const persist = async (ended = false) => {
     setSaving(true);
     try {
@@ -164,84 +167,95 @@ export default function WorkoutSession() {
         </Note>
       )}
 
-      {rows.map((r, ri) => (
-        <Card key={r.item.exercise_code + ri}>
-          <div className="row row--between" style={{ marginBottom: 8 }}>
-            <div className="grow">
-              <strong style={{ fontSize: 15.5 }}>{r.item.name}</strong>
-              <div className="row row--wrap" style={{ gap: 5, marginTop: 4 }}>
-                {r.item.machine_name && <Chip kind="machine">{r.item.machine_name}</Chip>}
-                {r.item.mode === 'restpause' && <Chip kind="sub">레스트포즈</Chip>}
+      <SortableList
+        items={rows}
+        keyOf={(r, i) => (r.item.exercise_code || r.item.id || i)}
+        onReorder={onReorder}
+      >
+        {(r, ri) => {
+          const po = progressiveOverloadLines(r.item, [], stats);
+          return (
+            <Card>
+              <div className="row row--between" style={{ marginBottom: 8 }}>
+                <div className="grow">
+                  <strong style={{ fontSize: 15.5 }}>{r.item.name}</strong>
+                  <div className="row row--wrap" style={{ gap: 5, marginTop: 4 }}>
+                    {r.item.machine_name && <Chip kind="machine">{r.item.machine_name}</Chip>}
+                    {r.item.mode === 'restpause' && <Chip kind="sub">레스트포즈</Chip>}
+                    {r.item.lift && <Chip kind="sub">{r.item.lift}</Chip>}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {r.prevText && (
-            <p className="tiny muted" style={{ margin: '0 0 8px' }}>
-              📌 지난 수행 · {r.prevText}
-            </p>
-          )}
+              {r.prevText && (
+                <p className="tiny muted" style={{ margin: '0 0 8px' }}>
+                  📌 지난 수행 · {r.prevText}
+                </p>
+              )}
+              <p className="tiny" style={{ color: 'var(--volt-ink)', margin: '0 0 8px' }}>{po.rule}</p>
 
-          {r.item.duration_min ? (
-            <div className="row row--between">
-              <span className="small">{r.item.duration_min}분 · {r.item.intensity || 'Zone2'}</span>
-              <button
-                type="button"
-                className={`btn btn--sm ${r.sets[0]?.done ? '' : 'btn--ghost'}`}
-                onClick={() => toggleDone(ri, 0)}
-              >
-                {r.sets[0]?.done ? '완료됨' : '완료'}
-              </button>
-            </div>
-          ) : (
-            <div className="setlog">
-              {r.sets.map((s, si) => (
-                <div key={si} className={`setlog__row ${s.done ? 'is-done' : ''}`}>
-                  <span className="setlog__idx">{si + 1}</span>
-                  <input
-                    className="input input--num setlog__w"
-                    inputMode="decimal"
-                    placeholder="kg"
-                    value={s.w}
-                    onChange={(e) => patchSet(ri, si, { w: e.target.value })}
-                  />
-                  <span className="tiny muted">×</span>
-                  <input
-                    className="input input--num setlog__r"
-                    inputMode="numeric"
-                    placeholder="회"
-                    value={s.reps}
-                    onChange={(e) => patchSet(ri, si, { reps: e.target.value })}
-                  />
-                  <input
-                    className="input input--num setlog__rir"
-                    inputMode="numeric"
-                    placeholder="RIR"
-                    value={s.rir ?? ''}
-                    onChange={(e) => patchSet(ri, si, { rir: e.target.value })}
-                  />
+              {r.item.duration_min ? (
+                <div className="row row--between">
+                  <span className="small">{r.item.duration_min}분 · {r.item.intensity || '가볍게'}</span>
                   <button
                     type="button"
-                    className={`setlog__chk ${s.done ? 'on' : ''}`}
-                    aria-pressed={s.done}
-                    onClick={() => toggleDone(ri, si)}
+                    className={`btn btn--sm ${r.sets[0]?.done ? '' : 'btn--ghost'}`}
+                    onClick={() => toggleDone(ri, 0)}
                   >
-                    ✓
+                    {r.sets[0]?.done ? '완료됨' : '완료'}
                   </button>
-                  {s.target_text && (
-                    <span className="setlog__hint">{s.target_text}</span>
-                  )}
                 </div>
-              ))}
-              <Stack
-                total={r.sets.length}
-                done={r.sets.filter((s) => s.done).length}
-                current={r.sets.findIndex((s) => !s.done)}
-              />
-            </div>
-          )}
-        </Card>
-      ))}
+              ) : (
+                <div className="setlog">
+                  {r.sets.map((s, si) => (
+                    <div key={si} className={`setlog__row ${s.done ? 'is-done' : ''}`}>
+                      <span className="setlog__idx">{si + 1}</span>
+                      <input
+                        className="input input--num setlog__w"
+                        inputMode="decimal"
+                        placeholder="kg"
+                        value={s.w}
+                        onChange={(e) => patchSet(ri, si, { w: e.target.value })}
+                      />
+                      <span className="tiny muted">×</span>
+                      <input
+                        className="input input--num setlog__r"
+                        inputMode="numeric"
+                        placeholder="회"
+                        value={s.reps}
+                        onChange={(e) => patchSet(ri, si, { reps: e.target.value })}
+                      />
+                      <input
+                        className="input input--num setlog__rir"
+                        inputMode="numeric"
+                        placeholder="RIR"
+                        value={s.rir ?? ''}
+                        onChange={(e) => patchSet(ri, si, { rir: e.target.value })}
+                      />
+                      <button
+                        type="button"
+                        className={`setlog__chk ${s.done ? 'on' : ''}`}
+                        aria-pressed={s.done}
+                        onClick={() => toggleDone(ri, si)}
+                      >
+                        ✓
+                      </button>
+                      {s.target_text && (
+                        <span className="setlog__hint">{s.target_text}</span>
+                      )}
+                    </div>
+                  ))}
+                  <Stack
+                    total={r.sets.length}
+                    done={r.sets.filter((s) => s.done).length}
+                    current={r.sets.findIndex((s) => !s.done)}
+                  />
+                </div>
+              )}
+            </Card>
+          );
+        }}
+      </SortableList>
 
       <button
         type="button"
@@ -264,7 +278,6 @@ export default function WorkoutSession() {
       <Note style={{ marginTop: 12 }}>
         <p className="small">
           체크한 세트의 무게·반복·RIR로 다음 목표가 자동 조절됩니다.
-          (workoutapp RIR 엔진)
         </p>
       </Note>
     </>

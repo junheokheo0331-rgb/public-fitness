@@ -150,8 +150,8 @@ export const EXERCISES = [
   {"code": "TRAP_BAR_DL", "name_ko": "트랩바 데드리프트", "pattern": "hinge", "requires": ["trap_bar"], "freeform": false, "setup": "허리 부담이 바벨보다 적다", "compound": true, "level": 2, "avoid": ["low_back"]},
   {"code": "TRX_ROW", "name_ko": "TRX 로우", "pattern": "horizontal_pull", "requires": ["trx"], "freeform": true, "setup": "각도로 난이도 조절", "compound": true, "level": 1, "avoid": []},
   {"code": "WALKING_LUNGE", "name_ko": "워킹 런지", "pattern": "squat", "requires": ["dumbbell"], "freeform": true, "setup": null, "compound": true, "level": 2, "avoid": ["knee"]},
-  {"code": "ZONE2_CYCLE", "name_ko": "사이클 Zone2", "pattern": "cardio", "requires": ["cycle"], "freeform": false, "setup": null, "compound": false, "level": 1, "avoid": ["knee"]},
-  {"code": "ZONE2_TM", "name_ko": "트레드밀 Zone2", "pattern": "cardio", "requires": ["treadmill"], "freeform": false, "setup": "대화 가능한 강도", "compound": false, "level": 1, "avoid": []},
+  {"code": "ZONE2_CYCLE", "name_ko": "사이클", "pattern": "cardio", "requires": ["cycle"], "freeform": false, "setup": null, "compound": false, "level": 1, "avoid": ["knee"]},
+  {"code": "ZONE2_TM", "name_ko": "트레드밀", "pattern": "cardio", "requires": ["treadmill"], "freeform": false, "setup": null, "compound": false, "level": 1, "avoid": []},
 ];
 
 

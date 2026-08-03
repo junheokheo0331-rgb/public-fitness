@@ -94,6 +94,17 @@ export default function OwnerHome() {
         </Link>
       </Card>
 
+      <Card>
+        <div className="row row--between" style={{ alignItems: 'center' }}>
+          <div>
+            <p className="eyebrow">추천 루틴</p>
+            <p className="card__title" style={{ fontSize: 16 }}>회원에게 공개</p>
+            <p className="card__note">보유 기구로 짠 입문·추천 루틴</p>
+          </div>
+          <Link className="btn btn--sm" to="/o/recommend">만들기</Link>
+        </div>
+      </Card>
+
       <Card title="가격표" note="앱에서는 안내만 하고 결제는 현장에서 받습니다">
         <ul className="list">
           {d.gym.plans.map((p) => (

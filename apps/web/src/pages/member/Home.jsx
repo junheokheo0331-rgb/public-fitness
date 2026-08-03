@@ -41,11 +41,11 @@ export default function MemberHome() {
       <p className="home-q">무엇을 도와드릴까요?</p>
 
       <div className="svc">
-        <button type="button" className="svc__card" onClick={() => nav('/find')}>
-          <span className="svc__badge">추천</span>
-          <strong className="svc__title">트레이너 찾기</strong>
-          <span className="svc__desc">재활·보디빌딩 등<br />분야로 골라요</span>
-          <span className="svc__art" aria-hidden="true">PT</span>
+        <button type="button" className="svc__card" onClick={() => nav('/book')}>
+          <span className="svc__badge">예약</span>
+          <strong className="svc__title">PT 예약</strong>
+          <span className="svc__desc">캘린더에서<br />시간 고르기</span>
+          <span className="svc__art" aria-hidden="true">BOOK</span>
         </button>
         <button type="button" className="svc__card" onClick={() => nav('/pt/new')}>
           <span className="svc__badge svc__badge--sky">신청</span>

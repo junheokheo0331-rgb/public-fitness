@@ -85,6 +85,22 @@ export default function ClientDetail() {
             측정 입력
           </Link>
         </div>
+        <button
+          type="button"
+          className="btn btn--volt btn--block"
+          style={{ marginTop: 8 }}
+          onClick={() => nav(`/t/clients/${memberId}/overload`)}
+        >
+          다음 목표 보기
+        </button>
+        <button
+          type="button"
+          className="btn btn--ghost btn--block"
+          style={{ marginTop: 8 }}
+          onClick={() => nav('/t/schedule')}
+        >
+          고정 일정 · 예약 관리
+        </button>
         {!client.consent_proxy && (
           <p className="tiny muted" style={{ marginTop: 8 }}>대리입력 동의가 없어 측정은 회원이 직접 해야 합니다.</p>
         )}

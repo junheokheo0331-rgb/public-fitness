@@ -82,8 +82,13 @@ export default function Machines() {
 
   async function save() {
     setBusy(true);
-    try { await setGymMachines(session.gymId, [...owned]); setSaved(true); }
-    finally { setBusy(false); }
+    try {
+      await setGymMachines(session.gymId, [...owned]);
+      setSaved(true);
+      alert('저장했습니다. 기구 맞춤 루틴은 자동으로 다시 맞춰집니다.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function onPickPhoto(e) {

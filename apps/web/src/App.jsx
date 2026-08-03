@@ -17,6 +17,14 @@ import PtRequestList from './pages/member/PtRequestList.jsx';
 import PtRequestDetail from './pages/member/PtRequestDetail.jsx';
 import FindTrainers from './pages/member/FindTrainers.jsx';
 import TrainerPublic from './pages/member/TrainerPublic.jsx';
+import PtBook from './pages/member/PtBook.jsx';
+
+import WorkoutHome from './pages/workout/WorkoutHome.jsx';
+import ProgramEdit from './pages/workout/ProgramEdit.jsx';
+import WorkoutLive from './pages/workout/WorkoutLive.jsx';
+import WorkoutAnalyze from './pages/workout/WorkoutAnalyze.jsx';
+import WorkoutSettings from './pages/workout/WorkoutSettings.jsx';
+import DayHistory from './pages/workout/DayHistory.jsx';
 
 import TrainerHome from './pages/trainer/Home.jsx';
 import Clients from './pages/trainer/Clients.jsx';
@@ -24,13 +32,16 @@ import ClientDetail from './pages/trainer/ClientDetail.jsx';
 import ProxyEntry from './pages/trainer/ProxyEntry.jsx';
 import SendRoutine from './pages/trainer/SendRoutine.jsx';
 import TrainerRoutineEdit from './pages/trainer/TrainerRoutineEdit.jsx';
+import ClientOverload from './pages/trainer/ClientOverload.jsx';
 import RequestBoard from './pages/trainer/RequestBoard.jsx';
 import RequestApply from './pages/trainer/RequestApply.jsx';
 import TrainerProfileEdit from './pages/trainer/TrainerProfileEdit.jsx';
+import TrainerSchedule from './pages/trainer/TrainerSchedule.jsx';
 
 import OwnerHome from './pages/owner/Home.jsx';
 import Machines from './pages/owner/Machines.jsx';
 import Roster from './pages/owner/Roster.jsx';
+import OwnerRecommend from './pages/owner/RecommendRoutine.jsx';
 
 /* 역할이 첫 화면을 정한다.
    회원은 "주변/내 헬스장", 트레이너는 "오늘 일정", 관장은 "현황". */
@@ -57,11 +68,22 @@ export default function App() {
         <Route path="/pt" element={<PtRequestList />} />
         <Route path="/pt/new" element={<PtRequestNew />} />
         <Route path="/pt/:requestId" element={<PtRequestDetail />} />
+        <Route path="/book" element={<PtBook />} />
         <Route path="/find" element={<FindTrainers />} />
         <Route path="/trainers/:trainerId" element={<TrainerPublic />} />
 
+        {/* 운동 */}
+        <Route path="/workout" element={<WorkoutHome />} />
+        <Route path="/workout/programs/new" element={<ProgramEdit />} />
+        <Route path="/workout/programs/:id" element={<ProgramEdit />} />
+        <Route path="/workout/live" element={<WorkoutLive />} />
+        <Route path="/workout/analyze" element={<WorkoutAnalyze />} />
+        <Route path="/workout/settings" element={<WorkoutSettings />} />
+        <Route path="/workout/day/:date" element={<DayHistory />} />
+
         {/* 트레이너 */}
         <Route path="/t" element={<TrainerHome />} />
+        <Route path="/t/schedule" element={<TrainerSchedule />} />
         <Route path="/t/profile" element={<TrainerProfileEdit />} />
         <Route path="/t/requests" element={<RequestBoard />} />
         <Route path="/t/requests/:requestId" element={<RequestApply />} />
@@ -69,12 +91,14 @@ export default function App() {
         <Route path="/t/clients/:memberId" element={<ClientDetail />} />
         <Route path="/t/clients/:memberId/body" element={<ProxyEntry />} />
         <Route path="/t/clients/:memberId/send" element={<SendRoutine />} />
+        <Route path="/t/clients/:memberId/overload" element={<ClientOverload />} />
         <Route path="/t/routines/new" element={<TrainerRoutineEdit />} />
         <Route path="/t/routines/:routineId" element={<TrainerRoutineEdit />} />
 
         {/* 관장 */}
         <Route path="/o" element={<OwnerHome />} />
         <Route path="/o/machines" element={<Machines />} />
+        <Route path="/o/recommend" element={<OwnerRecommend />} />
         <Route path="/o/roster" element={<Roster />} />
 
         <Route path="*" element={<Navigate to={HOME[session.role]} replace />} />

@@ -148,7 +148,7 @@ function restFor(ex, goal) {
  * @param {string[]} p.avoid     회피 부위
  * @param {string[]} p.excludeCodes
  * @param {Object} p.stats       { [exercise_code]: { e1rm } }
- * @param {boolean} p.zone2      매 세션 끝에 Zone2 유산소 30분 추가
+ * @param {boolean} p.zone2      매 세션 끝에 가벼운 유산소 추가 (기본 off)
  * @returns {{days: Array, warnings: string[]}}
  */
 export function buildRoutine(p) {
@@ -226,8 +226,8 @@ export function buildRoutine(p) {
           exercise_code: cardio.code, name: cardio.name_ko,
           machine_code: cardio.machine_code, machine_name: cardio.machine_name,
           is_freeform: false, setup_note: cardio.setup_note || null,
-          sets: 1, duration_min: 30,
-          intensity: 'Zone2 (카르보넨 60~70%)', rest_sec: 0,
+          sets: 1, duration_min: 20,
+          intensity: '가볍게', rest_sec: 0,
         });
       }
     }

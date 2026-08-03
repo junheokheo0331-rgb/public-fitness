@@ -190,3 +190,27 @@ export function statsFromSession(exercises) {
   }
   return out;
 }
+
+/**
+ * 트레이너용 점진적 과부하 한 줄 설명.
+ * workoutapp 화면의 목표 텍스트 + 규칙 링크용.
+ */
+export function progressiveOverloadLines(ex, prevSets = [], stats = {}) {
+  const targets = targetsForItem(ex, prevSets, stats);
+  const lines = targets.map((t, i) => ({
+    set: i + 1,
+    text: t.text,
+    kind: t.kind,
+    w: t.w,
+    reps: t.reps,
+  }));
+  let rule = '';
+  if (ex.lift || stats[ex.exercise_code]?.e1rm) {
+    rule = '메인: e1RM 기준 · 세션당 상승 최대 2.5% / 하락 최대 3%. 증량 단위가 크면 반복수가 먼저 올라갑니다.';
+  } else if (ex.mode === 'restpause') {
+    rule = '레스트포즈: RIR 대신 고정 중량에서의 총 반복(밀도)으로 진행합니다.';
+  } else {
+    rule = '보조: 같은 세트에서 반복 +1 → 상한 도달 시 1단위 증량 후 하한으로 리셋 (이중 점진).';
+  }
+  return { lines, rule };
+}

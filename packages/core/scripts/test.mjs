@@ -4,7 +4,7 @@
 
 import { buildRoutine, e1rm, nextTarget, snapWeight } from '../src/engine/routine.js';
 import {
-  setTargets, appliedE1rm, statsFromSession,
+  setTargets, appliedE1rm, statsFromSession, progressiveOverloadLines,
 } from '../src/engine/progress.js';
 import { searchExerciseCatalog } from '../src/lib/exercise-catalog.js';
 import { calcRefund } from '../src/engine/refund.js';
@@ -20,7 +20,7 @@ const gymA = [
   { code:'SEATED_CABLE_ROW', name_ko:'시티드 케이블로우', pattern:'horizontal_pull', is_compound:true, skill_level:1, machine_code:'SEATED_ROW', is_substitute:false, min_step_kg:5, contraindications:[] },
   { code:'LEG_PRESS_EX', name_ko:'레그프레스', pattern:'squat', is_compound:true, skill_level:1, machine_code:'LEG_PRESS', is_substitute:false, min_step_kg:10, contraindications:[] },
   { code:'PLANK', name_ko:'플랭크', pattern:'core', is_compound:false, skill_level:1, machine_code:null, is_substitute:false, min_step_kg:null, contraindications:[] },
-  { code:'ZONE2_TREADMILL', name_ko:'트레드밀 Zone2', pattern:'cardio', is_compound:false, skill_level:1, machine_code:'TREADMILL', is_substitute:false, min_step_kg:null, contraindications:[] },
+  { code:'ZONE2_TREADMILL', name_ko:'트레드밀', pattern:'cardio', is_compound:false, skill_level:1, machine_code:'TREADMILL', is_substitute:false, min_step_kg:null, contraindications:[] },
   { code:'DEADLIFT', name_ko:'데드리프트', pattern:'hinge', is_compound:true, skill_level:3, machine_code:'BARBELL', is_substitute:false, min_step_kg:2.5, contraindications:['low_back'] },
 ];
 
@@ -30,7 +30,7 @@ const allCodes = r1.days.flatMap(d => d.items.map(i => i.exercise_code));
 ok('보유 기구 밖 종목이 섞이지 않는다', allCodes.every(c => gymA.some(e => e.code === c)));
 ok('초보 레벨에 상급 종목(데드리프트)이 안 나온다', !allCodes.includes('DEADLIFT'));
 ok('기구 없는 패턴은 경고로 알린다', r1.warnings.length > 0);
-ok('Zone2가 매 세션에 붙는다', r1.days.every(d => d.items.some(i => i.exercise_code === 'ZONE2_TREADMILL')));
+ok('유산소가 매 세션에 붙는다', r1.days.every(d => d.items.some(i => i.exercise_code === 'ZONE2_TREADMILL')));
 console.log('   경고:', r1.warnings.join(' / ') || '(없음)');
 
 console.log('\n[2] 통증 부위 회피');
@@ -72,6 +72,13 @@ const stMap = statsFromSession([
   { code: 'BENCH', sets: [{ w: 80, reps: 5, rir: 2, done: true }] },
 ]);
 ok('세션에서 e1RM 스탯 추출', stMap.BENCH?.e1rm > 80);
+
+const po = progressiveOverloadLines(
+  { name: '랫풀다운', sets: 3, rep_range: [8, 12], target_rir: 1, mode: 'normal' },
+  [{ w: 50, reps: 10, done: true }],
+  {},
+);
+ok('점진적 과부하 라인 생성', po.lines.length === 3 && po.rule.includes('이중 점진'));
 
 console.log('\n[5] 환불 계산 — 기간제');
 const f1 = calcRefund({ amount: 600000, serviceFrom: '2026-01-01', serviceTo: '2026-06-30', asOf: '2026-02-01' });

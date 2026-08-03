@@ -1,20 +1,19 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useSession } from '../lib/session.jsx';
+import RestBar from './RestBar.jsx';
 
-/* 역할마다 다른 탭을 본다. 같은 앱, 같은 로그인, 다른 일.
-   탭 수를 4개 이하로 유지한다 — 엄지로 닿는 범위가 그 정도다. */
 const TABS = {
   member: [
     { to: '/',        glyph: '◎', label: '홈' },
-    { to: '/find',    glyph: '▣', label: '찾기' },
     { to: '/my',      glyph: '▤', label: '내 헬스장' },
-    { to: '/me',      glyph: '◇', label: '내 정보' },
+    { to: '/workout', glyph: '▲', label: '운동' },
+    { to: '/me',      glyph: '◇', label: '내정보' },
   ],
   trainer: [
     { to: '/t',           glyph: '◎', label: '오늘' },
-    { to: '/t/requests',  glyph: '▣', label: 'PT 요청' },
+    { to: '/t/schedule',  glyph: '▣', label: '일정' },
     { to: '/t/clients',   glyph: '▤', label: '담당 회원' },
-    { to: '/t/profile',   glyph: '◇', label: '프로필' },
+    { to: '/workout',     glyph: '▲', label: '운동' },
   ],
   owner: [
     { to: '/o',          glyph: '◎', label: '현황' },
@@ -34,6 +33,8 @@ export default function Shell() {
       <main className={`main ${wide ? 'main--wide' : ''}`}>
         <Outlet />
       </main>
+
+      {(session.role === 'member' || session.role === 'trainer') && <RestBar />}
 
       <nav className="nav" aria-label="주요 메뉴">
         {tabs.map((t) => (

@@ -1,8 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
+
+const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
+  envDir: repoRoot,
 
   // GitHub Pages 프로젝트 사이트는 https://<계정>.github.io/<레포이름>/ 아래에 놓인다.
   // 이 값이 '/' 로 남아 있으면 CSS·JS 를 루트에서 찾다가 전부 404 가 난다.

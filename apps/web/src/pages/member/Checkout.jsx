@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Card, Note, TopBar, won } from '../../ui/bits.jsx';
-import { completeDemoPayment, createPaymentOrder, getPricePlan, sb } from '../../lib/api.js';
+import { completeDemoPayment, createPaymentOrder, getPricePlan } from '../../lib/api.js';
 import { useSession } from '../../lib/session.jsx';
 
 export default function Checkout() {
@@ -23,16 +23,10 @@ export default function Checkout() {
     setBusy(true); setMessage('');
     try {
       const order = await createPaymentOrder(plan);
-      if (!sb) {
-        await completeDemoPayment(order.id);
-        setMessage('테스트 결제가 완료되었습니다.');
-        setTimeout(() => nav(plan.kind === 'daily' ? '/my' : '/me'), 900);
-      } else {
-        setPendingOrder(order);
-        setMessage(session.email?.endsWith('@gymlink.test')
-          ? '주문이 생성되었습니다. 아래에서 테스트 결제를 완료하세요.'
-          : '주문이 생성되었습니다. 실제 운영 전 PG 결제창을 연결해야 합니다.');
-      }
+      setPendingOrder(order);
+      setMessage(session.email?.endsWith('@gymlink.test')
+        ? '주문이 생성되었습니다. 아래에서 테스트 결제를 완료하세요.'
+        : '주문이 생성되었습니다. 실제 운영 전 PG 결제창을 연결해야 합니다.');
     } catch (error) { setMessage(error.message || '결제를 시작하지 못했습니다.'); }
     finally { setBusy(false); }
   };

@@ -61,13 +61,15 @@ export default function WorkoutSession() {
         const sets = blankSets(
           item.duration_min ? 1 : (item.sets || targets.length || 3),
           targets,
-        ).map((s, i) => ({
-          ...s,
-          rir: s.rir ?? item.target_rir ?? 1,
-          w: s.w === '' ? '' : s.w,
-          reps: s.reps === '' ? '' : s.reps,
-          target_text: targets[i]?.text || '',
-        }));
+        ).map((set, i) => {
+          const { rir: _removed, ...withoutRir } = set;
+          return {
+            ...withoutRir,
+            w: set.w === '' ? '' : set.w,
+            reps: set.reps === '' ? '' : set.reps,
+            target_text: targets[i]?.text || '',
+          };
+        });
         const prevDone = (prev || []).filter((s) => s.done && +s.reps > 0);
         const prevText = prevDone.length
           ? prevDone.map((s) => `${s.w}kg×${s.reps}`).join(' / ')

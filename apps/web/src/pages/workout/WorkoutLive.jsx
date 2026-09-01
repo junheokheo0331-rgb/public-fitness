@@ -7,7 +7,7 @@ import { exerciseToItem } from '../../lib/workout/defaults.js';
 import { Card, Chip, Note, Stack, Empty } from '../../ui/bits.jsx';
 import SortableList, { reorder } from '../../ui/SortableList.jsx';
 import ExercisePicker, { toEditableExercise } from '../../ui/ExercisePicker.jsx';
-import { availableExercises, getSavedRoutine, myMembership, saveRoutine } from '../../lib/api.js';
+import { availableExercises, getSavedRoutine, myMembership, saveRoutine, saveWorkoutSession } from '../../lib/api.js';
 import { editableToItem } from '@gymlink/core/catalog';
 import { exerciseArtwork } from '../../lib/exercise-art.js';
 
@@ -34,6 +34,8 @@ export default function WorkoutLive() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [structureChanged, setStructureChanged] = useState(false);
   const [updateRoutine, setUpdateRoutine] = useState(true);
+  const [exitOpen, setExitOpen] = useState(false);
+  const [finishOpen, setFinishOpen] = useState(false);
 
   useEffect(() => {
     if (!session) nav('/workout', { replace: true });
@@ -91,6 +93,8 @@ export default function WorkoutLive() {
   const totalVolume = rows.reduce((sum, row) => sum + row.sets.reduce((setSum, set) => (
     set.done ? setSum + (Number(set.w) || 0) * (Number(set.reps) || 0) : setSum
   ), 0), 0);
+  const completeExerciseCount = rows.filter((row) => row.sets.length && row.sets.every((set) => set.done)).length;
+  const progressPct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
 
   if (!session) return null;
 
@@ -122,6 +126,24 @@ export default function WorkoutLive() {
     if (markingDone && state.settings.autoRest && ex.type !== 'cardio') {
       store.startRest(Number(ex.rest) || 90, ex.name || '휴식');
     }
+  };
+
+  const completeExercise = (row) => {
+    const allDone = row.sets.length > 0 && row.sets.every((set) => set.done);
+    store.patchSessionSets((map) => ({
+      ...map,
+      [row.exId]: (map[row.exId] || []).map((set, index) => {
+        if (allDone) return { ...set, done: false };
+        const target = row.targets[index];
+        return {
+          ...set,
+          done: true,
+          w: set.w === '' && target?.w !== '' ? target.w : set.w,
+          reps: set.reps === '' && target?.reps !== '' ? target.reps : set.reps,
+        };
+      }),
+    }));
+    if (!allDone) setMsg(`${row.ex.name}을 모두 완료했습니다.`);
   };
 
   const addCatalog = (choice) => {
@@ -189,10 +211,45 @@ export default function WorkoutLive() {
     });
   };
 
-  const finish = async () => {
+  const finish = async ({ completeAll = false } = {}) => {
     setSaving(true);
+    setFinishOpen(false);
+    setExitOpen(false);
     try {
+      let setsMap = session.setsMap;
+      if (completeAll) {
+        setsMap = Object.fromEntries(rows.map((row) => [
+          row.exId,
+          row.sets.map((set, index) => {
+            const target = row.targets[index];
+            return {
+              ...set,
+              done: true,
+              w: set.w === '' && target?.w !== '' ? target.w : set.w,
+              reps: set.reps === '' && target?.reps !== '' ? target.reps : set.reps,
+            };
+          }),
+        ]));
+        store.patchSessionSets(() => setsMap);
+      }
       if (structureChanged && updateRoutine) await applySessionToRoutine();
+      await saveWorkoutSession({
+        dateStr: session.dateStr,
+        sessionId: session.id,
+        routineId: session.sourceRoutineId || session.programId || null,
+        dayIndex: session.sourceDayIndex || 0,
+        exercises: order.map((id) => {
+          const exercise = store.findExById(id);
+          return {
+            code: exercise.exercise_code || exercise.code || exercise.id,
+            name: exercise.name || id,
+            rest: Number(exercise.rest) || 0,
+            note: exercise.note || '',
+            sets: setsMap[id] || [],
+          };
+        }),
+        ended: true,
+      });
       store.finishSession();
       setMsg(structureChanged && updateRoutine ? '운동 기록과 루틴 변경을 저장했습니다.' : '운동 기록을 저장했습니다.');
       setTimeout(() => nav('/workout'), 1000);
@@ -202,19 +259,25 @@ export default function WorkoutLive() {
     }
   };
 
+  const discard = () => {
+    store.discardSession();
+    nav('/workout', { replace: true });
+  };
+
   return (
     <>
       <header className="live-hero">
         <div className="live-hero__top">
-          <button type="button" className="live-hero__close" aria-label="운동 화면 나가기" onClick={() => nav('/workout')}>⌄</button>
-          <div className="grow"><strong>{session.title || program?.title || '운동'}</strong><span>자동 저장 중</span></div>
-          <button type="button" className="live-hero__done" disabled={saving || doneCount === 0} onClick={finish}>완료</button>
+          <button type="button" className="live-hero__close" aria-label="운동 메뉴" onClick={() => setExitOpen(true)}>×</button>
+          <div className="grow"><strong>{session.title || program?.title || '운동'}</strong><span>{completeExerciseCount}/{rows.length}종목 · 자동 저장 중</span></div>
+          <button type="button" className="live-hero__done" disabled={saving || doneCount === 0} onClick={() => setFinishOpen(true)}>운동 완료</button>
         </div>
         <div className="live-hero__stats">
           <div><strong>{Math.round(totalVolume).toLocaleString('ko-KR')}</strong><span>kg 볼륨</span></div>
           <div><strong>{hhmmss(elapsedSec)}</strong><span>운동 시간</span></div>
           <div><strong>{doneCount}</strong><span>/ {totalCount}세트</span></div>
         </div>
+        <div className="live-progress" aria-label={`운동 진행률 ${progressPct}%`}><span style={{ width: `${progressPct}%` }} /></div>
       </header>
 
       {msg && <Note kind="go"><p className="small">{msg}</p></Note>}
@@ -236,7 +299,7 @@ export default function WorkoutLive() {
           const ex = r.ex;
           const artwork = exerciseArtwork(ex);
           return (
-            <Card className="workout-exercise">
+            <Card className={`workout-exercise ${r.sets.length && r.sets.every((set) => set.done) ? 'is-complete' : ''}`}>
               <div className="row row--between workout-exercise__head" style={{ marginBottom: 8 }}>
                 <div className="exercise-thumb exercise-thumb--photo">
                   {artwork && <img src={artwork.url} alt={artwork.alt} />}
@@ -244,6 +307,7 @@ export default function WorkoutLive() {
                 <div className="grow">
                   <strong style={{ fontSize: 15.5 }}>{ex.name || r.exId}</strong>
                   <div className="row row--wrap" style={{ gap: 5, marginTop: 4 }}>
+                    <Chip kind={r.sets.every((set) => set.done) ? 'go' : undefined}>{r.sets.filter((set) => set.done).length}/{r.sets.length}세트</Chip>
                     {ex.equip && <Chip kind="machine">{[ex.machine_brand, ex.machine_model_name, ex.equip].filter(Boolean).join(' · ')}</Chip>}
                     <label className="rest-select" title="이 운동의 세트 간 휴식시간">
                       <span aria-hidden="true">⏱</span>
@@ -329,14 +393,19 @@ export default function WorkoutLive() {
                     </div>
                     <button type="button" className="btn btn--sm btn--ghost grow" disabled={!r.prev.length} onClick={() => loadPrevious(r)}>지난 기록 불러오기</button>
                   </div>
+                  <button
+                    type="button"
+                    className={`exercise-complete ${r.sets.every((set) => set.done) ? 'is-done' : ''}`}
+                    onClick={() => completeExercise(r)}
+                  >
+                    {r.sets.every((set) => set.done) ? '✓ 이 종목 완료됨 · 취소' : '이 종목 모두 완료'}
+                  </button>
                 </div>
               )}
             </Card>
           );
         }}
       </SortableList>
-
-      <button type="button" className="workout-fab" onClick={() => { setReplaceTarget(null); setPickerOpen(true); }}><span>＋</span> 운동 추가</button>
 
       {structureChanged && (session.programId || session.sourceRoutineId) && (
         <Card>
@@ -347,8 +416,12 @@ export default function WorkoutLive() {
         </Card>
       )}
 
-      <p className="tiny muted workout-autosave">입력한 기록은 이 기기에 자동 저장됩니다.</p>
-      <button type="button" className="btn btn--block" style={{ marginBottom: 80 }} disabled={saving || doneCount === 0} onClick={finish}>운동 완료</button>
+      <p className="tiny muted workout-autosave">입력 중인 내용은 자동 저장되고, 운동 완료 시 계정 기록에 반영됩니다.</p>
+      <div className="workout-end-actions">
+        <button type="button" className="btn btn--ghost" onClick={() => { setReplaceTarget(null); setPickerOpen(true); }}>＋ 운동 추가</button>
+        <button type="button" className="btn" disabled={saving || doneCount === 0} onClick={() => setFinishOpen(true)}>{saving ? '저장 중…' : '운동 완료'}</button>
+      </div>
+      <button type="button" className="workout-stop" onClick={() => setExitOpen(true)}>운동 그만두기</button>
 
       {pickerOpen && (
         <div className="picker-sheet" role="dialog" aria-modal="true" aria-label={replaceTarget ? '운동 교체' : '운동 추가'}>
@@ -365,6 +438,39 @@ export default function WorkoutLive() {
               onAdd={addCatalog}
               selectedCodes={replaceTarget ? [] : rows.map((row) => row.ex.exercise_code || row.ex.id)}
             />
+          </section>
+        </div>
+      )}
+
+      {finishOpen && (
+        <div className="workout-dialog" role="dialog" aria-modal="true" aria-labelledby="finish-title">
+          <button type="button" className="workout-dialog__backdrop" aria-label="닫기" onClick={() => setFinishOpen(false)} />
+          <section className="workout-dialog__panel">
+            <p className="eyebrow">오늘 운동 정리</p>
+            <h2 id="finish-title">운동을 완료할까요?</h2>
+            <div className="workout-dialog__summary">
+              <div><strong>{hhmmss(elapsedSec)}</strong><span>운동 시간</span></div>
+              <div><strong>{doneCount}/{totalCount}</strong><span>완료 세트</span></div>
+              <div><strong>{Math.round(totalVolume).toLocaleString('ko-KR')}</strong><span>kg 볼륨</span></div>
+            </div>
+            {doneCount < totalCount && <p className="small muted">완료하지 않은 {totalCount - doneCount}세트가 있습니다. 수행한 세트만 저장하거나 모두 완료로 표시할 수 있어요.</p>}
+            <button type="button" className="btn btn--block" disabled={saving} onClick={() => finish()}>{saving ? '저장 중…' : '수행한 세트만 저장하고 완료'}</button>
+            {doneCount < totalCount && <button type="button" className="btn btn--ghost btn--block" disabled={saving} onClick={() => finish({ completeAll: true })}>모든 세트를 완료로 표시</button>}
+            <button type="button" className="workout-dialog__cancel" onClick={() => setFinishOpen(false)}>운동 계속하기</button>
+          </section>
+        </div>
+      )}
+
+      {exitOpen && (
+        <div className="workout-dialog" role="dialog" aria-modal="true" aria-labelledby="exit-title">
+          <button type="button" className="workout-dialog__backdrop" aria-label="닫기" onClick={() => setExitOpen(false)} />
+          <section className="workout-dialog__panel">
+            <p className="eyebrow">운동 나가기</p>
+            <h2 id="exit-title">지금 운동을 그만둘까요?</h2>
+            <p className="small muted">수행한 세트가 있다면 기록으로 저장하고 끝낼 수 있습니다. 기록 삭제를 선택하면 오늘 입력한 내용은 복구할 수 없습니다.</p>
+            {doneCount > 0 && <button type="button" className="btn btn--block" disabled={saving} onClick={() => finish()}>수행한 세트 저장하고 끝내기</button>}
+            <button type="button" className="btn btn--danger btn--block" onClick={discard}>기록하지 않고 운동 취소</button>
+            <button type="button" className="workout-dialog__cancel" onClick={() => setExitOpen(false)}>운동 계속하기</button>
           </section>
         </div>
       )}

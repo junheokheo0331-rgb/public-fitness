@@ -1,8 +1,9 @@
 # Supabase · Vercel 배포 준비
 
-## 로컬 데모
+## 로컬 실행
 
-`.env`가 없으면 목 데이터로 네 역할 화면이 모두 열린다.
+`.env.local`에 Supabase URL과 anon key가 있어야 한다. 설정이 없으면 앱은 가짜
+데이터로 우회하지 않고 오류를 표시한다.
 
 ```bash
 npm install
@@ -14,8 +15,8 @@ npm run dev
 
 1. 새 Supabase 프로젝트를 만든다.
 2. SQL Editor에서 `db/01_schema.sql` → `02_rls.sql` → `03_functions.sql` → `04_seed.sql` → `06_mvp_expansion.sql` → `07_location_machine_intelligence.sql` → `08_notifications.sql` → `09_trainer_workout.sql` → `10_chat_media.sql` → `11_payments.sql` → `12_catalog_expansion.sql` → `14_api_permissions.sql` → `15_booking_approval.sql` → `17_pt_application_owner.sql` → `18_active_gym.sql` → `19_day_pass.sql` → `20_booking_enum_fix.sql` → `21_day_pass_uuid_fix.sql` 순서로 실행한다.
-3. 심사·QA 환경은 테스트 계정 3개를 만든 뒤 `db/13_sst_demo.sql`을 한 번 실행한다. 운영 환경에는 실행하지 않는다.
-4. `.env.example`을 `.env`로 복사하고 Project URL과 anon key를 입력한다.
+3. 심사·QA 환경은 테스트 계정 3개를 만든 뒤 `db/13_sst_demo.sql`을 실행한다. 이 시드는 세 역할의 프로필, 헬스장, 머신, 가격표, 회원권, PT, 예약, 루틴, 운동 기록, 체성분, 대화와 알림을 실제 테이블에 연결한다. 운영 환경에는 실행하지 않는다.
+4. `.env.example`을 `.env.local`로 복사하고 Project URL과 anon key를 입력한다.
 5. Authentication URL Configuration에 로컬 주소와 Vercel 배포 주소를 Redirect URL로 등록한다.
 6. 카카오·Apple OAuth를 사용할 경우 Supabase Provider와 각 개발자 콘솔을 함께 설정한다. 네이버는 별도 커스텀 OAuth가 필요하므로 설정 전에는 이메일 로그인을 사용한다.
 7. `service_role` 키와 AI API 키는 브라우저 환경변수에 넣지 않는다. 식단 분석은 추후 Supabase Edge Function secret으로만 호출한다.

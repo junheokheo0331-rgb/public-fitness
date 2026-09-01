@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSession, ROLE_LABEL } from '../lib/session.jsx';
-import { IS_MOCK } from '../lib/api.js';
+import { CONFIG_ERROR } from '../lib/api.js';
 
 /* 회원 로그인이 메인. 트레이너·관장은 하단 보조 링크로만 노출한다.
 
@@ -14,7 +14,7 @@ const SOCIAL = [
 ];
 
 export default function Login() {
-  const { signIn, signInSocial, signInPassword, signUpEmail } = useSession();
+  const { signInSocial, signInPassword, signUpEmail } = useSession();
   const [screen, setScreen] = useState('member'); // member | staff
   const [staffRole, setStaffRole] = useState('trainer'); // trainer | owner
   const [showIdLogin, setShowIdLogin] = useState(false);
@@ -24,10 +24,8 @@ export default function Login() {
   const [memberMode, setMemberMode] = useState('login');
   const [notice, setNotice] = useState('');
 
-  const enterMember = () => signIn('member');
-
   const enterSocial = async (provider) => {
-    if (IS_MOCK) { enterMember(); return; }
+    if (CONFIG_ERROR) { setNotice(CONFIG_ERROR); return; }
     if (provider === 'naver') {
       setNotice('네이버 로그인은 Supabase 커스텀 OAuth 설정 후 활성화됩니다. 이메일 로그인을 이용해주세요.');
       return;
@@ -38,7 +36,7 @@ export default function Login() {
 
   const submitIdLogin = async (e) => {
     e.preventDefault();
-    if (IS_MOCK) { enterMember(); return; }
+    if (CONFIG_ERROR) { setNotice(CONFIG_ERROR); return; }
     if (!email) { setNotice('이메일을 입력해주세요.'); return; }
     if (password.length < 8) { setNotice('비밀번호는 8자 이상 입력해주세요.'); return; }
     if (memberMode === 'signup') {
@@ -57,7 +55,7 @@ export default function Login() {
 
   const submitStaff = async (e) => {
     e.preventDefault();
-    if (IS_MOCK) { signIn(staffRole); return; }
+    if (CONFIG_ERROR) { setNotice(CONFIG_ERROR); return; }
     if (!email) { setNotice('업무용 이메일을 입력해주세요.'); return; }
     if (password.length < 8) { setNotice('비밀번호는 8자 이상 입력해주세요.'); return; }
     const { error } = await signInPassword(email, password);
@@ -101,7 +99,7 @@ export default function Login() {
             <span className="field__label">업무용 이메일</span>
             <input
               className="input" type="email" autoComplete="email" placeholder="staff@example.com"
-              value={email} onChange={(e) => setEmail(e.target.value)} required={!IS_MOCK}
+              value={email} onChange={(e) => setEmail(e.target.value)} required
             />
           </label>
 
@@ -109,7 +107,7 @@ export default function Login() {
             <span className="field__label">비밀번호</span>
             <input
               className="input" type="password" minLength="8" autoComplete="current-password"
-              placeholder="8자 이상" value={password} onChange={(e) => setPassword(e.target.value)} required={!IS_MOCK}
+              placeholder="8자 이상" value={password} onChange={(e) => setPassword(e.target.value)} required
             />
           </label>
 
@@ -118,12 +116,7 @@ export default function Login() {
           </button>
         </form>
 
-        {IS_MOCK && (
-          <p className="tiny muted auth__hint">
-            연습용입니다. 관장만 사업자번호를 확인하고, 트레이너는 자격·소속을 확인합니다.
-          </p>
-        )}
-        {!IS_MOCK && <p className="tiny muted auth__hint">신규 관장은 사업자 확인 후, 트레이너는 소속·자격 확인 후 계정이 활성화됩니다. 트레이너에게 사업자등록번호를 요구하지 않습니다.</p>}
+        <p className="tiny muted auth__hint">신규 관장은 사업자 확인 후, 트레이너는 소속·자격 확인 후 계정이 활성화됩니다. 트레이너에게 사업자등록번호를 요구하지 않습니다.</p>
         {notice && <p className="tiny muted auth__hint">{notice}</p>}
       </div>
     );
@@ -164,13 +157,11 @@ export default function Login() {
           </button>
         ) : (
           <form onSubmit={submitIdLogin} className="auth__id">
-            {!IS_MOCK && (
-              <div className="auth-tabs" role="tablist" aria-label="회원 계정">
-                <button type="button" role="tab" className="auth-tabs__btn" aria-selected={memberMode === 'login'} onClick={() => { setMemberMode('login'); setNotice(''); }}>로그인</button>
-                <button type="button" role="tab" className="auth-tabs__btn" aria-selected={memberMode === 'signup'} onClick={() => { setMemberMode('signup'); setNotice(''); }}>회원가입</button>
-              </div>
-            )}
-            {!IS_MOCK && memberMode === 'signup' && (
+            <div className="auth-tabs" role="tablist" aria-label="회원 계정">
+              <button type="button" role="tab" className="auth-tabs__btn" aria-selected={memberMode === 'login'} onClick={() => { setMemberMode('login'); setNotice(''); }}>로그인</button>
+              <button type="button" role="tab" className="auth-tabs__btn" aria-selected={memberMode === 'signup'} onClick={() => { setMemberMode('signup'); setNotice(''); }}>회원가입</button>
+            </div>
+            {memberMode === 'signup' && (
               <label className="field">
                 <span className="field__label">이름</span>
                 <input className="input" autoComplete="name" placeholder="홍길동" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
@@ -187,7 +178,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </label>
-            {!IS_MOCK && <label className="field">
+            <label className="field">
               <span className="field__label">비밀번호</span>
               <input
                 className="input" type="password" minLength="8"
@@ -195,9 +186,9 @@ export default function Login() {
                 placeholder="8자 이상"
                 value={password} onChange={(e) => setPassword(e.target.value)} required
               />
-            </label>}
+            </label>
             <button className="btn btn--ghost btn--block btn--sm" type="submit">
-              {IS_MOCK || memberMode === 'login' ? '로그인' : '회원가입'}
+              {memberMode === 'login' ? '로그인' : '회원가입'}
             </button>
           </form>
         )}
@@ -205,8 +196,7 @@ export default function Login() {
         <p className="auth__signup">
           아직 계정이 없나요?{' '}
           <button type="button" className="auth__link" onClick={() => {
-            if (IS_MOCK) enterMember();
-            else { setShowIdLogin(true); setMemberMode('signup'); setNotice(''); }
+            setShowIdLogin(true); setMemberMode('signup'); setNotice('');
           }}>
             회원가입
           </button>
@@ -239,18 +229,8 @@ export default function Login() {
         </button>
       </div>
 
-      {IS_MOCK && (
-        <button type="button" className="auth__demo-admin" onClick={() => signIn('admin')}>
-          대회 데모 · 본사 운영 화면
-        </button>
-      )}
       {notice && <p className="tiny muted auth__hint">{notice}</p>}
-
-      {IS_MOCK && (
-        <p className="tiny muted auth__hint">
-          연습용 데이터로 돌고 있습니다. 아무 버튼이나 눌러도 들어갑니다.
-        </p>
-      )}
+      {CONFIG_ERROR && <p className="tiny auth__hint" role="alert">{CONFIG_ERROR}</p>}
     </div>
   );
 }

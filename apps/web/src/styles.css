@@ -1060,6 +1060,56 @@ body {
 .gym-map, .map-fallback { border-radius: 18px; }
 .chat-compose { border-radius: 18px; box-shadow: 0 10px 28px -18px rgba(15,23,42,.42); }
 
+/* 라이브 운동 — 완료 단위를 명확히 하고 화면을 가볍게 유지한다. */
+.live-hero {
+  margin: -16px -16px 14px;
+  padding: calc(12px + env(safe-area-inset-top)) 16px 14px;
+  color: var(--ink);
+  background: rgba(255,255,255,.96);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 8px 24px -22px rgba(15,23,42,.5);
+}
+.live-hero__top strong { font-size: 17px; font-weight: 790; }
+.live-hero__top span { color: var(--ink-3); font-size: 11px; }
+.live-hero__close,
+.live-hero__done { color: var(--ink); }
+.live-hero__close { width: 36px; height: 36px; border-radius: 999px; background: var(--line-2); font-size: 23px; }
+.live-hero__done { min-height: 36px; padding: 7px 11px; border-radius: 10px; background: var(--volt-bg); color: var(--volt-ink); font-size: 12.5px; }
+.live-hero__done:disabled { background: var(--line-2); color: var(--ink-3); }
+.live-hero__stats { margin-top: 13px; gap: 6px; }
+.live-hero__stats div { justify-content: center; padding: 8px 6px; border-radius: 12px; background: #F7F9FC; }
+.live-hero__stats strong { color: var(--ink); font-size: 17px; }
+.live-hero__stats span { color: var(--ink-3); font-size: 9.5px; }
+.live-progress { height: 4px; margin-top: 11px; overflow: hidden; border-radius: 999px; background: var(--line); }
+.live-progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #58B1FF, var(--volt)); transition: width .2s ease; }
+
+.workout-exercise { overflow: visible; border-color: #E8EBF0; box-shadow: 0 8px 25px -22px rgba(15,23,42,.62); }
+.workout-exercise.is-complete { border-color: #BFE0FF; box-shadow: 0 0 0 1px #D8EBFF, 0 8px 25px -22px rgba(59,158,255,.5); }
+.exercise-complete {
+  width: 100%; min-height: 40px; margin-top: 8px; border: 1px solid #CFE6FB; border-radius: 11px;
+  background: #F5FAFF; color: var(--volt-ink); font-size: 12.5px; font-weight: 760; cursor: pointer;
+}
+.exercise-complete.is-done { border-color: #BFE3CF; background: var(--go-bg); color: var(--go); }
+.workout-end-actions { display: grid; grid-template-columns: .9fr 1.1fr; gap: 8px; margin-top: 8px; }
+.workout-end-actions .btn { min-width: 0; }
+.workout-stop { display: block; margin: 13px auto 86px; padding: 7px 12px; border: 0; background: transparent; color: var(--ink-3); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+.workout-dialog { position: fixed; inset: 0; z-index: 95; display: flex; align-items: flex-end; justify-content: center; }
+.workout-dialog__backdrop { position: absolute; inset: 0; border: 0; background: rgba(20,26,36,.42); backdrop-filter: blur(2px); }
+.workout-dialog__panel {
+  position: relative; width: min(100%, 560px); padding: 21px 18px calc(18px + env(safe-area-inset-bottom));
+  border-radius: 24px 24px 0 0; background: #fff; box-shadow: 0 -16px 45px rgba(15,23,42,.2);
+}
+.workout-dialog__panel h2 { margin: 3px 0 9px; font-size: 21px; letter-spacing: -.04em; }
+.workout-dialog__panel > .small { margin: 0 0 15px; }
+.workout-dialog__panel .btn + .btn { margin-top: 8px; }
+.workout-dialog__summary { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; margin: 14px 0; }
+.workout-dialog__summary div { display: grid; gap: 2px; padding: 11px 7px; border-radius: 13px; background: #F5F7FA; text-align: center; }
+.workout-dialog__summary strong { font-family: var(--mono); font-size: 16px; letter-spacing: -.035em; }
+.workout-dialog__summary span { color: var(--ink-3); font-size: 10px; }
+.workout-dialog__cancel { display: block; width: 100%; margin-top: 10px; padding: 9px; border: 0; background: transparent; color: var(--ink-2); font-size: 12.5px; cursor: pointer; }
+.btn--danger { border-color: #F0C7C2; background: var(--stop-bg); color: var(--stop); box-shadow: none; }
+
 @media (max-width: 420px) {
   body { font-size: 14px; }
   .main { padding-top: 10px; }
@@ -1074,6 +1124,9 @@ body {
   .workout-exercise { padding: 12px; }
   .workout-exercise .exercise-thumb { width: 42px; height: 42px; }
   .setlog__row { padding-left: 0; }
+  .live-hero { margin: -10px -12px 12px; padding-inline: 12px; }
+  .live-hero__stats div { display: grid; gap: 0; padding-inline: 4px; }
+  .workout-end-actions { grid-template-columns: 1fr; }
   .auth { padding-inline: 16px; }
   .auth__mark { font-size: 34px; }
 }

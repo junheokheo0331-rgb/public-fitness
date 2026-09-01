@@ -4,7 +4,7 @@ import { getTodayStr } from '@gymlink/core/time';
 import { itemToEditable } from '@gymlink/core/catalog';
 import { defaultState, exerciseToItem } from './defaults.js';
 
-const KEY = 'gymlink.workout.v7';
+const KEY_PREFIX = 'gymlink.workout.v8';
 
 function uid(prefix = 'p') {
   return prefix + Math.random().toString(36).slice(2, 9);
@@ -25,7 +25,7 @@ function initSetsForExercise(ex, prevSets, stats, settings) {
   const item = exerciseToItem(ex);
   const unitLabel = settings?.unit || 'kg';
   if (ex.type === 'cardio') {
-    return [{ w: '', reps: '', rir: null, done: false, target_text: `유산소 ${ex.targetMin || settings?.cardioMin || 30}분` }];
+    return [{ w: '', reps: '', done: false, target_text: `유산소 ${ex.targetMin || settings?.cardioMin || 30}분` }];
   }
   const targets = setTargets(
     {
@@ -33,7 +33,6 @@ function initSetsForExercise(ex, prevSets, stats, settings) {
       sets: ex.sets,
       repLo: ex.repLo,
       repHi: ex.repHi,
-      rir: ex.rir,
       step: stepFor(ex, settings),
       mode: ex.mode,
       lift: ex.lift,
@@ -45,15 +44,16 @@ function initSetsForExercise(ex, prevSets, stats, settings) {
       unitLabel,
     },
   );
-  return blankSets(Math.max(1, Number(ex.sets) || 3), targets).map((s, i) => ({
-    ...s,
-    rir: s.rir ?? ex.rir ?? 1,
-    target_text: targets[i]?.text || '',
-  }));
+  return blankSets(Math.max(1, Number(ex.sets) || 3), targets).map((set, i) => {
+    const { rir: _removed, ...withoutRir } = set;
+    return { ...withoutRir, target_text: targets[i]?.text || '' };
+  });
 }
 
 class WorkoutStoreClass {
   constructor() {
+    this._accountId = null;
+    this._key = `${KEY_PREFIX}.signed-out`;
     this._state = defaultState();
     this._listeners = new Set();
     this.load();
@@ -61,8 +61,7 @@ class WorkoutStoreClass {
 
   load() {
     try {
-      const raw = localStorage.getItem(KEY)
-        || localStorage.getItem('gymlink.workout.v6');
+      const raw = localStorage.getItem(this._key);
       if (!raw) return this._state;
       const parsed = JSON.parse(raw);
       const base = defaultState();
@@ -89,7 +88,7 @@ class WorkoutStoreClass {
 
   save() {
     try {
-      localStorage.setItem(KEY, JSON.stringify(this._state));
+      localStorage.setItem(this._key, JSON.stringify(this._state));
     } catch { /* quota */ }
   }
 
@@ -101,6 +100,7 @@ class WorkoutStoreClass {
 
   _mutate(fn) {
     fn();
+    this._state = { ...this._state };
     this.save();
     this._emit();
   }
@@ -112,6 +112,49 @@ class WorkoutStoreClass {
   subscribe(fn) {
     this._listeners.add(fn);
     return () => this._listeners.delete(fn);
+  }
+
+  /** 브라우저에 저장하는 진행 중 운동도 계정별로 완전히 분리한다. */
+  setAccount(accountId) {
+    const nextId = accountId || null;
+    if (this._accountId === nextId) return;
+    this._accountId = nextId;
+    this._key = `${KEY_PREFIX}.${nextId || 'signed-out'}`;
+    this._state = defaultState();
+    this.load();
+    this._emit();
+  }
+
+  /** Supabase 운동 기록을 로컬 분석·달력 형식으로 병합한다. */
+  mergeRemoteSessions(rows = []) {
+    this._mutate(() => {
+      for (const remote of rows) {
+        if (!remote?.id || !remote?.date) continue;
+        const exercises = (remote.exercises || []).map((exercise) => ({
+          ...exercise,
+          id: exercise.code || exercise.id || exercise.name,
+          exercise_code: exercise.code || exercise.exercise_code || exercise.id,
+          sets: Array.isArray(exercise.sets) ? exercise.sets.length : Number(exercise.sets) || 0,
+        }));
+        const order = exercises.map((exercise) => exercise.id);
+        const saved = {
+          id: remote.id,
+          programId: remote.routineId || null,
+          startedAt: remote.startedAt,
+          endedAt: remote.endedAt,
+          sets: Object.fromEntries(exercises.map((exercise, index) => [order[index], remote.exercises[index]?.sets || []])),
+          free: !remote.routineId,
+          title: remote.title || '운동 기록',
+          order,
+          exercises,
+        };
+        const day = this._state.logs[remote.date] || { sessions: [] };
+        const index = day.sessions.findIndex((session) => session.id === remote.id);
+        if (index >= 0) day.sessions[index] = saved;
+        else day.sessions.push(saved);
+        this._state.logs[remote.date] = day;
+      }
+    });
   }
 
   getProgram(id) {
@@ -388,6 +431,15 @@ class WorkoutStoreClass {
     return saved;
   }
 
+  /** 기록을 남기지 않고 진행 중인 운동과 휴식 타이머를 종료한다. */
+  discardSession() {
+    if (!this._state.session) return;
+    this._mutate(() => {
+      this._state.session = null;
+      this._state.timer = null;
+    });
+  }
+
   getActiveSession() {
     return this._state.session;
   }
@@ -476,7 +528,7 @@ class WorkoutStoreClass {
 
   setBaseline(lift, field, value) {
     this._mutate(() => {
-      const b = this._state.settings.baseline[lift] || { w: 0, reps: 1, rir: 0 };
+      const b = this._state.settings.baseline[lift] || { w: 0, reps: 1 };
       b[field] = value;
       this._state.settings.baseline[lift] = b;
     });
@@ -487,13 +539,13 @@ class WorkoutStoreClass {
   }
 
   importJSON(obj) {
-    if (obj.version !== 6 && obj.version !== 7) throw new Error('지원하지 않는 백업 형식입니다.');
+    if (![6, 7, 8].includes(obj.version)) throw new Error('지원하지 않는 백업 형식입니다.');
     this._mutate(() => {
       const base = defaultState();
       this._state = {
         ...base,
         ...obj,
-        version: 7,
+        version: 8,
         settings: { ...base.settings, ...obj.settings },
         programs: (obj.version < 7 || !obj.programs?.length) ? base.programs : obj.programs,
       };

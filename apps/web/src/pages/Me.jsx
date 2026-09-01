@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { CONSENT_KINDS } from '@gymlink/core/constants';
 import { TopBar, Card, Chip, Note, won } from '../ui/bits.jsx';
 import { useSession, ROLE_LABEL } from '../lib/session.jsx';
-import { getConsents, grantConsent, revokeConsent, myPaymentOrders, IS_MOCK } from '../lib/api.js';
+import { getConsents, grantConsent, revokeConsent, myPaymentOrders } from '../lib/api.js';
 import { useWorkout } from '../lib/workout/WorkoutContext.jsx';
 
 /* 내 정보 — 실질적으로는 동의 관리 화면이다.
@@ -136,11 +136,6 @@ export default function Me() {
 
       <button className="btn btn--ghost btn--block" onClick={signOut}>로그아웃</button>
 
-      {IS_MOCK && (
-        <p className="tiny muted" style={{ textAlign: 'center', marginTop: 14 }}>
-          연습용 데이터로 돌고 있습니다. 로그아웃하면 다른 역할로 다시 들어갈 수 있습니다.
-        </p>
-      )}
     </>
   );
 }

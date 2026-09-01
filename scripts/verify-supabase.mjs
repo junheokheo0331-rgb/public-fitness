@@ -79,6 +79,29 @@ const member = clients.member;
 const { data: demoGym, error: gymError } = await owner.from('gyms').select('id').eq('owner_id', profiles.owner.id).single();
 if (gymError) throw gymError;
 
+const personaChecks = [
+  ['gym-profile', owner.from('gyms').select('name,intro,amenities,rating_count').eq('id', demoGym.id).single(),
+    (row) => row.name === '모두의짐 서면점' && row.intro?.length > 80 && row.amenities?.length >= 8 && row.rating_count >= 100],
+  ['machines', owner.from('gym_machines').select('*', { count: 'exact', head: true }).eq('gym_id', demoGym.id),
+    (_row, count) => count >= 40],
+  ['price-plans', member.from('price_plans').select('*', { count: 'exact', head: true }).eq('gym_id', demoGym.id).eq('is_active', true),
+    (_row, count) => count >= 7],
+  ['trainer-career', member.from('trainer_credentials').select('*', { count: 'exact', head: true }).eq('trainer_id', profiles.trainer.id),
+    (_row, count) => count >= 5],
+  ['trainer-hours', trainer.from('trainer_availability').select('*', { count: 'exact', head: true }).eq('trainer_id', profiles.trainer.id),
+    (_row, count) => count >= 8],
+  ['workout-history', member.from('workout_logs').select('*', { count: 'exact', head: true }).eq('member_id', profiles.member.id),
+    (_row, count) => count >= 2],
+  ['body-history', member.from('body_composition').select('*', { count: 'exact', head: true }).eq('member_id', profiles.member.id),
+    (_row, count) => count >= 3],
+];
+for (const [label, query, validate] of personaChecks) {
+  const { data, count, error } = await query;
+  const ok = !error && validate(data, count ?? 0);
+  console.log(`${label.padEnd(15)} ${ok ? 'OK' : `FAIL ${error?.code || `count=${count ?? 0}`}`}`);
+  failed ||= !ok;
+}
+
 const { error: activeGymError } = await member.rpc('set_active_gym', { p_gym_id: demoGym.id });
 console.log(`active-gym ${activeGymError ? `FAIL ${activeGymError.code}` : 'OK'}`);
 failed ||= Boolean(activeGymError);

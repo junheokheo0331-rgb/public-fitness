@@ -7,8 +7,7 @@
    ============================================================ */
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { ME } from './mock.js';
-import { sb, IS_MOCK, setMyActiveGym } from './api.js';
+import { sb, setMyActiveGym } from './api.js';
 
 const Ctx = createContext(null);
 const KEY = 'gymlink.session';
@@ -17,10 +16,10 @@ export function SessionProvider({ children }) {
   const [session, setSession] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem(KEY)) || null; } catch { return null; }
   });
-  const [loading, setLoading] = useState(!IS_MOCK);
+  const [loading, setLoading] = useState(Boolean(sb));
 
   useEffect(() => {
-    if (!sb) return undefined;
+    if (!sb) { setLoading(false); return undefined; }
     let active = true;
     const hydrate = async (user) => {
       if (!user) { if (active) setSession(null); return; }
@@ -53,9 +52,6 @@ export function SessionProvider({ children }) {
     else sessionStorage.removeItem(KEY);
   }, [session]);
 
-  const signIn = (role) => {
-    if (IS_MOCK) setSession({ ...ME[role], gymId: 'g-1' });
-  };
   const signInSocial = (provider, role = 'member') => sb?.auth.signInWithOAuth({
     provider,
     options: {
@@ -85,7 +81,7 @@ export function SessionProvider({ children }) {
   };
 
   return <Ctx.Provider value={{
-    session, loading, signIn, signInSocial, signInEmail, signInPassword, signUpEmail, signOut, switchGym,
+    session, loading, signInSocial, signInEmail, signInPassword, signUpEmail, signOut, switchGym,
   }}>{children}</Ctx.Provider>;
 }
 

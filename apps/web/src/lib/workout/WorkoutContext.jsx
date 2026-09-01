@@ -1,15 +1,28 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { WorkoutStore } from './store.js';
 import { alarm, requestWakeLock, releaseWakeLock } from './timerExtras.js';
+import { useSession } from '../session.jsx';
+import { listWorkoutSessions } from '../api.js';
 
 const WorkoutContext = createContext(null);
 
 export function WorkoutProvider({ children }) {
+  const { session } = useSession();
   const [state, setState] = useState(() => WorkoutStore.getState());
   const [tick, setTick] = useState(0);
   const alarmedRef = useRef(new Set());
 
   useEffect(() => WorkoutStore.subscribe(setState), []);
+
+  useEffect(() => {
+    let alive = true;
+    WorkoutStore.setAccount(session?.id || null);
+    if (!session?.id) return () => { alive = false; };
+    listWorkoutSessions(100)
+      .then((rows) => { if (alive) WorkoutStore.mergeRemoteSessions(rows); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [session?.id]);
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 500);

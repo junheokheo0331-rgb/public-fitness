@@ -1,13 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { buildRoutine } from '@gymlink/core/routine';
-import {
-  searchExerciseCatalog, catalogToRoutineItem,
-  itemToEditable, editableToItem,
-} from '@gymlink/core/catalog';
-import { progressiveOverloadLines } from '@gymlink/core/progress';
+import { itemToEditable, editableToItem } from '@gymlink/core/catalog';
 import { TopBar, Card, Chip, Field, Note, Empty } from '../../ui/bits.jsx';
 import SortableList, { reorder } from '../../ui/SortableList.jsx';
+import ExercisePicker, { toEditableExercise } from '../../ui/ExercisePicker.jsx';
 import {
   availableExercises, getTrainerRoutine, saveTrainerRoutine, deleteTrainerRoutine,
   getExerciseStats,
@@ -27,7 +24,7 @@ const MODES = [
   { key: 'restpause', label: '레스트포즈' },
 ];
 
-/* 드래그 순서 변경 · 종목 편집 · RIR 과부하 미리보기 */
+/* 드래그 순서 변경 · 종목 편집 · 다음 목표 미리보기 */
 
 export default function TrainerRoutineEdit() {
   const { routineId } = useParams();
@@ -36,7 +33,7 @@ export default function TrainerRoutineEdit() {
   const isNew = !routineId || routineId === 'new';
   const nav = useNavigate();
   const { session } = useSession();
-  const gymId = session?.gymId || 'g-1';
+  const gymId = session?.gymId;
 
   const [title, setTitle] = useState('새 루틴');
   const [goal, setGoal] = useState('hypertrophy');
@@ -50,8 +47,10 @@ export default function TrainerRoutineEdit() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [gymAvailable, setGymAvailable] = useState([]);
 
   useEffect(() => {
+    if (!gymId) { setLoaded(true); return undefined; }
     let alive = true;
     (async () => {
       const [list, st] = await Promise.all([
@@ -60,6 +59,7 @@ export default function TrainerRoutineEdit() {
       ]);
       if (!alive) return;
       setStats(st);
+      setGymAvailable(list);
 
       if (!isNew) {
         const meta = await getTrainerRoutine(routineId);
@@ -101,13 +101,11 @@ export default function TrainerRoutineEdit() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routineId, isNew, gymId]);
 
-  const suggestions = useMemo(
-    () => (query.trim().length >= 1 ? searchExerciseCatalog(query, 6) : []),
-    [query],
-  );
+  if (!gymId) return <><TopBar title="루틴 편집" back /><Card><Empty title="소속 헬스장이 없습니다">설정에서 소속 등록 상태를 확인해주세요.</Empty></Card></>;
 
   const rebuild = async () => {
     const list = await availableExercises(gymId, level);
+    setGymAvailable(list);
     const built = buildRoutine({
       available: list,
       daysPerWeek: Number(days) || 3,
@@ -150,8 +148,8 @@ export default function TrainerRoutineEdit() {
     }));
   };
 
-  const addFromCatalog = (c) => {
-    const ex = catalogToRoutineItem(c, { lift: c.lift || '' });
+  const addFromCatalog = (choice) => {
+    const ex = toEditableExercise(choice);
     setBody((prev) => ({
       days: prev.days.map((d, i) => (
         i === dayIdx ? { ...d, items: [...d.items, ex] } : d
@@ -227,8 +225,8 @@ export default function TrainerRoutineEdit() {
 
       <Note kind="volt" title="다음 목표 자동 조절">
         <p className="small">
-          메인 리프트는 RIR 기준으로, 보조는 반복→증량 순으로 다음 목표가 잡힙니다.
-          종목을 펼치면 세트별 미리보기가 나옵니다.
+          회원의 지난 무게·반복 기록을 바탕으로 다음 목표가 잡힙니다.
+          전문 용어 없이 종목을 펼치면 세트별 목표를 확인할 수 있습니다.
         </p>
         {memberId && (
           <button
@@ -275,7 +273,7 @@ export default function TrainerRoutineEdit() {
           </Field>
         </div>
         <button type="button" className="btn btn--ghost btn--block btn--sm" onClick={rebuild}>
-          기구 기준으로 다시 짜기
+          현재 헬스장에 맞게 조정
         </button>
       </Card>
 
@@ -293,29 +291,9 @@ export default function TrainerRoutineEdit() {
       </div>
 
       <Card title={`${day.name} · 종목`} note="⋮⋮ 잡고 끌어서 순서 변경">
-        <Field label="종목 검색 추가">
-          <input
-            className="input"
-            placeholder="예: 스쿼트, 랫풀다운"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </Field>
-        {suggestions.length > 0 && (
-          <ul className="list" style={{ marginBottom: 12, border: '1px solid var(--line)', borderRadius: 12 }}>
-            {suggestions.map((c) => (
-              <li key={c.name}>
-                <button type="button" className="list__item" style={{ width: '100%' }} onClick={() => addFromCatalog(c)}>
-                  <div className="list__body">
-                    <div className="list__title">{c.name}</div>
-                    <div className="list__meta">{c.equip}{c.lift ? ` · ${c.lift}` : ''}</div>
-                  </div>
-                  <span className="list__right">+</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ExercisePicker
+          available={gymAvailable} query={query} onQueryChange={setQuery} onAdd={addFromCatalog}
+        />
 
         {!day.items.length && <Empty title="종목이 없습니다" />}
 
@@ -327,7 +305,6 @@ export default function TrainerRoutineEdit() {
           {(ex, ii) => {
             const open = openId === ex.id;
             const item = editableToItem(ex);
-            const po = progressiveOverloadLines(item, [], stats);
             return (
               <div className="exedit exedit--dnd">
                 <button
@@ -340,7 +317,7 @@ export default function TrainerRoutineEdit() {
                     <div className="tiny muted">
                       {ex.type === 'cardio'
                         ? `${ex.targetMin}분`
-                        : `${ex.sets}×${ex.repLo}–${ex.repHi} @RIR${ex.rir}`}
+                        : `${ex.sets}세트 · ${ex.repLo}–${ex.repHi}회`}
                       {ex.lift ? ` · ${ex.lift}` : ''}
                       {ex.mode === 'restpause' ? ' · RP' : ''}
                     </div>
@@ -358,9 +335,6 @@ export default function TrainerRoutineEdit() {
                         <div className="rowfields">
                           <Field label="세트">
                             <input className="input input--num" value={ex.sets} onChange={(e) => patchItem(ii, { sets: e.target.value })} />
-                          </Field>
-                          <Field label="RIR">
-                            <input className="input input--num" value={ex.rir} onChange={(e) => patchItem(ii, { rir: e.target.value })} />
                           </Field>
                           <Field label="반복 하한">
                             <input className="input input--num" value={ex.repLo} onChange={(e) => patchItem(ii, { repLo: e.target.value })} />
@@ -387,20 +361,6 @@ export default function TrainerRoutineEdit() {
                     <Field label="메모">
                       <input className="input" value={ex.note || ''} onChange={(e) => patchItem(ii, { note: e.target.value })} />
                     </Field>
-
-                    <div className="overload">
-                      <p className="overload__title">다음 목표</p>
-                      <p className="tiny muted" style={{ marginBottom: 6 }}>{po.rule}</p>
-                      <ul className="overload__list">
-                        {po.lines.map((l) => (
-                          <li key={l.set}>
-                            <span className="mono">세트 {l.set}</span>
-                            <span>{l.text}</span>
-                            <Chip kind="sub">{l.kind}</Chip>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
 
                     <button type="button" className="btn btn--sm btn--stop" onClick={() => removeItem(ii)}>
                       종목 삭제

@@ -8,6 +8,7 @@
     ".": "./src/index.js",
     "./routine": "./src/engine/routine.js",
     "./progress": "./src/engine/progress.js",
+    "./matching": "./src/engine/matching.js",
     "./time": "./src/engine/time.js",
     "./analytics": "./src/engine/analytics.js",
     "./refund": "./src/engine/refund.js",

@@ -14,25 +14,54 @@ const SOCIAL = [
 ];
 
 export default function Login() {
-  const { signIn } = useSession();
+  const { signIn, signInSocial, signInPassword, signUpEmail } = useSession();
   const [screen, setScreen] = useState('member'); // member | staff
   const [staffRole, setStaffRole] = useState('trainer'); // trainer | owner
   const [showIdLogin, setShowIdLogin] = useState(false);
-  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [bizNo, setBizNo] = useState('');
-  const [gymName, setGymName] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [memberMode, setMemberMode] = useState('login');
+  const [notice, setNotice] = useState('');
 
   const enterMember = () => signIn('member');
 
-  const submitIdLogin = (e) => {
-    e.preventDefault();
-    enterMember();
+  const enterSocial = async (provider) => {
+    if (IS_MOCK) { enterMember(); return; }
+    if (provider === 'naver') {
+      setNotice('네이버 로그인은 Supabase 커스텀 OAuth 설정 후 활성화됩니다. 이메일 로그인을 이용해주세요.');
+      return;
+    }
+    const { error } = await signInSocial(provider, 'member');
+    if (error) setNotice(error.message);
   };
 
-  const submitStaff = (e) => {
+  const submitIdLogin = async (e) => {
     e.preventDefault();
-    signIn(staffRole);
+    if (IS_MOCK) { enterMember(); return; }
+    if (!email) { setNotice('이메일을 입력해주세요.'); return; }
+    if (password.length < 8) { setNotice('비밀번호는 8자 이상 입력해주세요.'); return; }
+    if (memberMode === 'signup') {
+      if (!displayName.trim()) { setNotice('사용할 이름을 입력해주세요.'); return; }
+      const { data, error } = await signUpEmail(email, password, displayName);
+      setNotice(error
+        ? error.message
+        : data.session
+          ? '가입과 로그인이 완료되었습니다.'
+          : '가입 확인 메일을 보냈습니다. 메일의 링크를 누른 뒤 로그인해주세요.');
+      return;
+    }
+    const { error } = await signInPassword(email, password);
+    setNotice(error ? '이메일 또는 비밀번호를 확인해주세요.' : '로그인되었습니다.');
+  };
+
+  const submitStaff = async (e) => {
+    e.preventDefault();
+    if (IS_MOCK) { signIn(staffRole); return; }
+    if (!email) { setNotice('업무용 이메일을 입력해주세요.'); return; }
+    if (password.length < 8) { setNotice('비밀번호는 8자 이상 입력해주세요.'); return; }
+    const { error } = await signInPassword(email, password);
+    setNotice(error ? '이메일 또는 비밀번호를 확인해주세요.' : '로그인되었습니다.');
   };
 
   if (screen === 'staff') {
@@ -47,7 +76,7 @@ export default function Login() {
         </button>
 
         <h1 className="auth__mark">Gym<span>Link</span></h1>
-        <p className="auth__tag">사업자·소속 지점 인증이 필요합니다.</p>
+        <p className="auth__tag">{staffRole === 'owner' ? '승인된 관장 계정으로 로그인하세요.' : '승인된 트레이너 계정으로 로그인하세요.'}</p>
 
         <div className="auth-tabs" role="tablist" aria-label="로그인 유형">
           {[
@@ -69,53 +98,33 @@ export default function Login() {
 
         <form onSubmit={submitStaff} className="auth__main">
           <label className="field">
-            <span className="field__label">사업자등록번호</span>
+            <span className="field__label">업무용 이메일</span>
             <input
-              className="input input--num"
-              inputMode="numeric"
-              placeholder="000-00-00000"
-              value={bizNo}
-              onChange={(e) => setBizNo(e.target.value)}
-              required
+              className="input" type="email" autoComplete="email" placeholder="staff@example.com"
+              value={email} onChange={(e) => setEmail(e.target.value)} required={!IS_MOCK}
             />
           </label>
 
           <label className="field">
-            <span className="field__label">
-              {staffRole === 'trainer' ? '소속 지점' : '운영 지점'}
-            </span>
+            <span className="field__label">비밀번호</span>
             <input
-              className="input"
-              placeholder="예: GymLink 서면점"
-              value={gymName}
-              onChange={(e) => setGymName(e.target.value)}
-              required
-            />
-          </label>
-
-          <label className="field">
-            <span className="field__label">휴대폰 번호</span>
-            <input
-              className="input input--num"
-              type="tel"
-              inputMode="numeric"
-              autoComplete="tel"
-              placeholder="010 0000 0000"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              className="input" type="password" minLength="8" autoComplete="current-password"
+              placeholder="8자 이상" value={password} onChange={(e) => setPassword(e.target.value)} required={!IS_MOCK}
             />
           </label>
 
           <button className="btn btn--block" type="submit">
-            {ROLE_LABEL[staffRole]} 인증 후 들어가기
+            {ROLE_LABEL[staffRole]} 로그인
           </button>
         </form>
 
         {IS_MOCK && (
           <p className="tiny muted auth__hint">
-            연습용입니다. 사업자번호·지점은 아무거나 넣어도 들어갑니다.
+            연습용입니다. 관장만 사업자번호를 확인하고, 트레이너는 자격·소속을 확인합니다.
           </p>
         )}
+        {!IS_MOCK && <p className="tiny muted auth__hint">신규 관장은 사업자 확인 후, 트레이너는 소속·자격 확인 후 계정이 활성화됩니다. 트레이너에게 사업자등록번호를 요구하지 않습니다.</p>}
+        {notice && <p className="tiny muted auth__hint">{notice}</p>}
       </div>
     );
   }
@@ -125,9 +134,7 @@ export default function Login() {
       <header className="auth__head">
         <p className="eyebrow">부산 · 서면</p>
         <h1 className="auth__mark">Gym<span>Link</span></h1>
-        <p className="auth__tag">
-          이 헬스장에 <strong>실제로 있는 기구</strong>로만 루틴을 짭니다.
-        </p>
+        <p className="auth__tag">헬스장과 사람을 잇습니다.</p>
       </header>
 
       <div className="auth__main">
@@ -137,7 +144,7 @@ export default function Login() {
               key={s.id}
               type="button"
               className={`social__btn social__btn--${s.id}`}
-              onClick={enterMember}
+              onClick={() => enterSocial(s.id)}
             >
               {s.mark ? (
                 <span className="social__mark" aria-hidden="true">{s.mark}</span>
@@ -157,6 +164,18 @@ export default function Login() {
           </button>
         ) : (
           <form onSubmit={submitIdLogin} className="auth__id">
+            {!IS_MOCK && (
+              <div className="auth-tabs" role="tablist" aria-label="회원 계정">
+                <button type="button" role="tab" className="auth-tabs__btn" aria-selected={memberMode === 'login'} onClick={() => { setMemberMode('login'); setNotice(''); }}>로그인</button>
+                <button type="button" role="tab" className="auth-tabs__btn" aria-selected={memberMode === 'signup'} onClick={() => { setMemberMode('signup'); setNotice(''); }}>회원가입</button>
+              </div>
+            )}
+            {!IS_MOCK && memberMode === 'signup' && (
+              <label className="field">
+                <span className="field__label">이름</span>
+                <input className="input" autoComplete="name" placeholder="홍길동" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+              </label>
+            )}
             <label className="field">
               <span className="field__label">이메일</span>
               <input
@@ -168,27 +187,27 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </label>
-            <label className="field">
-              <span className="field__label">또는 휴대폰 번호</span>
+            {!IS_MOCK && <label className="field">
+              <span className="field__label">비밀번호</span>
               <input
-                className="input input--num"
-                type="tel"
-                inputMode="numeric"
-                autoComplete="tel"
-                placeholder="010 0000 0000"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                className="input" type="password" minLength="8"
+                autoComplete={memberMode === 'signup' ? 'new-password' : 'current-password'}
+                placeholder="8자 이상"
+                value={password} onChange={(e) => setPassword(e.target.value)} required
               />
-            </label>
+            </label>}
             <button className="btn btn--ghost btn--block btn--sm" type="submit">
-              로그인
+              {IS_MOCK || memberMode === 'login' ? '로그인' : '회원가입'}
             </button>
           </form>
         )}
 
         <p className="auth__signup">
           아직 계정이 없나요?{' '}
-          <button type="button" className="auth__link" onClick={enterMember}>
+          <button type="button" className="auth__link" onClick={() => {
+            if (IS_MOCK) enterMember();
+            else { setShowIdLogin(true); setMemberMode('signup'); setNotice(''); }
+          }}>
             회원가입
           </button>
         </p>
@@ -219,6 +238,13 @@ export default function Login() {
           관장님이신가요?
         </button>
       </div>
+
+      {IS_MOCK && (
+        <button type="button" className="auth__demo-admin" onClick={() => signIn('admin')}>
+          대회 데모 · 본사 운영 화면
+        </button>
+      )}
+      {notice && <p className="tiny muted auth__hint">{notice}</p>}
 
       {IS_MOCK && (
         <p className="tiny muted auth__hint">

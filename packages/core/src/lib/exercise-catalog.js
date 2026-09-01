@@ -132,7 +132,13 @@ export function itemToEditable(item) {
     exercise_code: item.exercise_code,
     machine_code: item.machine_code,
     machine_name: item.machine_name,
+    machine_photo_url: item.machine_photo_url || null,
+    machine_brand: item.machine_brand || null,
+    machine_model_name: item.machine_model_name || null,
     min_step_kg: item.min_step_kg,
+    pattern: item.pattern,
+    primary_muscles: item.primary_muscles || [],
+    laterality: item.laterality || 'either',
   });
 }
 
@@ -157,6 +163,9 @@ export function editableToItem(ex) {
     name: ex.name,
     machine_code: ex.machine_code || null,
     machine_name: ex.machine_name || ex.equip || null,
+    machine_photo_url: ex.machine_photo_url || null,
+    machine_brand: ex.machine_brand || null,
+    machine_model_name: ex.machine_model_name || null,
     is_freeform: true,
     setup_note: ex.note || null,
     sets: Number(ex.sets) || 3,
@@ -168,5 +177,8 @@ export function editableToItem(ex) {
     lift: ex.lift || null,
     round: ex.round || 'near',
     min_step_kg: ex.min_step_kg || (ex.equip === '바벨' ? 2.5 : ex.equip === '덤벨' ? 2 : 5),
+    pattern: ex.pattern || null,
+    primary_muscles: ex.primary_muscles || [],
+    laterality: ex.laterality || 'either',
   };
 }

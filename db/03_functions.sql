@@ -470,7 +470,7 @@ create trigger messages_mask_trg before insert on public.messages
 create or replace function public.consume_session()
 returns trigger language plpgsql as $$
 begin
-  if new.status = 'done' and coalesce(old.status,'') <> 'done' and new.ledger_id is not null then
+  if new.status = 'done' and old.status is distinct from 'done' and new.ledger_id is not null then
     update pt_ledger
        set used_sessions = used_sessions + 1
      where id = new.ledger_id and used_sessions < total_sessions;
@@ -528,6 +528,8 @@ $$;
 
 -- ─────────────────────────────────────────────────────────────
 --  8. 회원가입 시 profiles 자동 생성
+--     클라이언트 metadata의 role은 절대 신뢰하지 않는다. 모든 신규 계정은
+--     member로 시작하고 trainer/owner/admin 승격은 본사 심사 후 서버에서만 한다.
 -- ─────────────────────────────────────────────────────────────
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
@@ -535,7 +537,7 @@ begin
   insert into public.profiles (id, display_name, role)
   values (new.id,
           coalesce(new.raw_user_meta_data->>'display_name', '회원'),
-          coalesce((new.raw_user_meta_data->>'role')::user_role, 'member'))
+          'member')
   on conflict (id) do nothing;
   return new;
 end $$;

@@ -9,7 +9,7 @@ import {
   getExerciseStats, lastSetsForExercise, saveWorkoutSession,
 } from '../../lib/api.js';
 
-/* 세트별 무게·반복·RIR 기록 */
+/* 세트별 무게·반복 기록 */
 
 export default function WorkoutSession() {
   const { routineId } = useParams();
@@ -24,12 +24,14 @@ export default function WorkoutSession() {
   const [sessionId] = useState(() => `s${Date.now()}`);
   const [saving, setSaving] = useState(false);
   const [doneMsg, setDoneMsg] = useState(null);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       const ms = await myMembership();
-      const gymId = ms?.gym_id || 'g-1';
+      if (!ms?.gym_id) { if (alive) setLoadError('먼저 내 헬스장을 선택해주세요.'); return; }
+      const gymId = ms.gym_id;
       const [routine, ex, st] = await Promise.all([
         getSavedRoutine(routineId),
         availableExercises(gymId),
@@ -68,7 +70,7 @@ export default function WorkoutSession() {
         }));
         const prevDone = (prev || []).filter((s) => s.done && +s.reps > 0);
         const prevText = prevDone.length
-          ? prevDone.map((s) => `${s.w}kg×${s.reps}${s.rir != null ? `(R${s.rir})` : ''}`).join(' / ')
+          ? prevDone.map((s) => `${s.w}kg×${s.reps}`).join(' / ')
           : null;
         built.push({ item, sets, targets, prevText });
       }
@@ -76,6 +78,8 @@ export default function WorkoutSession() {
     })();
     return () => { alive = false; };
   }, [routineId, dayIndex]);
+
+  if (loadError) return <><TopBar title="운동" back /><Card><Note kind="stop"><p className="small">{loadError}</p></Note></Card></>;
 
   const doneCount = useMemo(() => {
     if (!rows) return 0;
@@ -225,13 +229,6 @@ export default function WorkoutSession() {
                         value={s.reps}
                         onChange={(e) => patchSet(ri, si, { reps: e.target.value })}
                       />
-                      <input
-                        className="input input--num setlog__rir"
-                        inputMode="numeric"
-                        placeholder="RIR"
-                        value={s.rir ?? ''}
-                        onChange={(e) => patchSet(ri, si, { rir: e.target.value })}
-                      />
                       <button
                         type="button"
                         className={`setlog__chk ${s.done ? 'on' : ''}`}
@@ -277,7 +274,7 @@ export default function WorkoutSession() {
 
       <Note style={{ marginTop: 12 }}>
         <p className="small">
-          체크한 세트의 무게·반복·RIR로 다음 목표가 자동 조절됩니다.
+          체크한 세트의 무게와 반복 기록으로 다음 목표가 자동 조절됩니다.
         </p>
       </Note>
     </>

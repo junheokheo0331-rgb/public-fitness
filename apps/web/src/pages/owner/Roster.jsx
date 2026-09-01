@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { calcRefund } from '@gymlink/core/refund';
-import { TopBar, Card, Chip, Note, won } from '../../ui/bits.jsx';
-import { gymRoster } from '../../lib/api.js';
+import { TopBar, Card, Chip, Empty, Field, Note, won } from '../../ui/bits.jsx';
+import { gymRoster, saveMembershipRecord } from '../../lib/api.js';
 import { useSession } from '../../lib/session.jsx';
 
 /* 회원 명단 + 출입 시스템 내보내기.
@@ -25,8 +25,18 @@ export default function Roster() {
   const { session } = useSession();
   const [rows, setRows] = useState(null);
   const [openId, setOpenId] = useState(null);
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('active');
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [flash, setFlash] = useState('');
 
-  useEffect(() => { gymRoster(session.gymId).then(setRows); }, [session.gymId]);
+  useEffect(() => {
+    if (!session.gymId) return undefined;
+    let alive = true;
+    gymRoster(session.gymId).then((items) => alive && setRows(items)).catch((error) => alive && setFlash(error.message || '회원 명단을 불러오지 못했습니다.'));
+    return () => { alive = false; };
+  }, [session.gymId]);
 
   function download() {
     // 엑셀이 한글을 깨뜨리지 않도록 BOM 을 붙인다. 현장에서 이걸로 자주 막힌다.
@@ -39,7 +49,30 @@ export default function Roster() {
     URL.revokeObjectURL(url);
   }
 
-  if (!rows) return <><TopBar title="회원" /><Card><p className="muted small">불러오는 중…</p></Card></>;
+  if (!session.gymId) return <><TopBar title="회원" /><Card><Empty title="연결된 헬스장이 없습니다">사업장이 연결되면 신규 회원과 회원권 기록을 관리할 수 있습니다.</Empty></Card></>;
+  if (!rows) return <><TopBar title="회원" />{flash ? <Note kind="stop"><p className="small">{flash}</p></Note> : <Card><p className="muted small">불러오는 중…</p></Card>}</>;
+
+  const filtered = rows.filter((row) => {
+    const matchesText = `${row.name} ${row.plan}`.toLowerCase().includes(query.trim().toLowerCase());
+    const matchesStatus = status === 'all' || (status === 'active' ? row.active : !row.active);
+    return matchesText && matchesStatus;
+  });
+
+  async function saveEdit() {
+    if (!editing?.starts || !editing?.ends) return;
+    if (editing.ends < editing.starts) {
+      setFlash('종료일은 시작일보다 빠를 수 없습니다.');
+      return;
+    }
+    setSaving(true); setFlash('');
+    try {
+      await saveMembershipRecord(session.gymId, editing);
+      setRows(await gymRoster(session.gymId));
+      setEditing(null);
+      setFlash('회원권 정보를 저장했습니다.');
+    } catch (error) { setFlash(error.message || '저장하지 못했습니다.'); }
+    finally { setSaving(false); }
+  }
 
   return (
     <>
@@ -50,6 +83,15 @@ export default function Roster() {
       />
 
       <Card flush>
+        <div className="roster-tools">
+          <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="회원 이름·회원권 검색" aria-label="회원 검색" />
+          <div className="seg" aria-label="회원 상태 필터">
+            {[['active', '이용 중'], ['expired', '만료'], ['all', '전체']].map(([value, label]) => (
+              <button key={value} type="button" className={`seg__btn ${status === value ? 'is-on' : ''}`} onClick={() => setStatus(value)}>{label}</button>
+            ))}
+          </div>
+        </div>
+        {flash && <div style={{ padding: '0 16px 12px' }}><Note kind={flash.includes('못') || flash.includes('빠를') ? 'stop' : 'go'}><p className="small">{flash}</p></Note></div>}
         <div style={{ overflowX: 'auto' }}>
           <table className="table">
             <thead>
@@ -59,7 +101,7 @@ export default function Roster() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
+              {filtered.map((r) => {
                 const left = Math.ceil((new Date(r.ends) - new Date()) / 86400000);
                 const ref = calcRefund({
                   amount: r.paid, serviceFrom: r.starts, serviceTo: r.ends,
@@ -80,6 +122,7 @@ export default function Roster() {
                           : <Chip kind="go">유효</Chip>}
                     </td>
                     <td>
+                      <button className="btn btn--sm btn--ghost" onClick={() => { setEditing({ ...r }); setFlash(''); }}>수정</button>
                       {r.active && (
                         <button
                           className="btn btn--sm btn--ghost"
@@ -97,10 +140,27 @@ export default function Roster() {
                   </tr>
                 );
               })}
+              {!filtered.length && <tr><td colSpan="6" className="small muted" style={{ textAlign: 'center', padding: 30 }}>조건에 맞는 회원이 없습니다.</td></tr>}
             </tbody>
           </table>
         </div>
       </Card>
+
+      {editing && (
+        <Card title={`${editing.name} 회원권 수정`} note={editing.plan} right={<button type="button" className="btn btn--sm btn--ghost" onClick={() => setEditing(null)}>닫기</button>}>
+          <div className="form-grid form-grid--2">
+            <Field label="시작일"><input type="date" className="input" value={editing.starts} onChange={(e) => setEditing({ ...editing, starts: e.target.value })} /></Field>
+            <Field label="종료일"><input type="date" className="input" value={editing.ends} onChange={(e) => setEditing({ ...editing, ends: e.target.value })} /></Field>
+            <Field label="실결제 금액"><input type="number" min="0" step="1000" className="input" value={editing.paid} onChange={(e) => setEditing({ ...editing, paid: e.target.value })} /></Field>
+            <Field label="이용 상태">
+              <select className="select" value={editing.active ? 'active' : 'expired'} onChange={(e) => setEditing({ ...editing, active: e.target.value === 'active' })}>
+                <option value="active">이용 중</option><option value="expired">만료·해지</option>
+              </select>
+            </Field>
+          </div>
+          <button type="button" className="btn btn--block" disabled={saving} onClick={saveEdit}>{saving ? '저장 중…' : '변경사항 저장'}</button>
+        </Card>
+      )}
 
       <Note title="출입 시스템에 올리는 법">
         <p className="small">

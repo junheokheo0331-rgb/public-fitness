@@ -4,10 +4,12 @@ import { TopBar, Card, Chip, Note, Empty, won, km } from '../../ui/bits.jsx';
 import {
   getPtRequest, listApplications, selectPtApplication,
 } from '../../lib/api.js';
+import { useSession } from '../../lib/session.jsx';
 
 export default function PtRequestDetail() {
   const { requestId } = useParams();
   const nav = useNavigate();
+  const { session } = useSession();
   const [req, setReq] = useState(null);
   const [apps, setApps] = useState(null);
   const [picking, setPicking] = useState(null);
@@ -52,7 +54,7 @@ export default function PtRequestDetail() {
     );
   }
 
-  const mine = req.member_id === 'u-member';
+  const mine = req.member_id === session.id;
 
   return (
     <>

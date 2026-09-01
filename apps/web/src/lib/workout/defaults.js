@@ -64,6 +64,7 @@ export function defaultSettings() {
       데드리프트: { w: 0, reps: 1, rir: 0 },
     },
     autoRest: true,
+    defaultRest: 90,
     sound: true,
     vibrate: true,
     notify: false,

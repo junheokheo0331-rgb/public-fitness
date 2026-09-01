@@ -5,13 +5,28 @@ import { myClients } from '../../lib/api.js';
 
 export default function Clients() {
   const [clients, setClients] = useState(null);
-  useEffect(() => { myClients().then(setClients); }, []);
+  const [error, setError] = useState('');
+  const load = () => {
+    setClients(null);
+    setError('');
+    myClients().then(setClients).catch((err) => {
+      console.error('담당 회원 조회 실패', err);
+      setError('회원 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+    });
+  };
+  useEffect(load, []);
 
   return (
     <>
       <TopBar title="담당 회원" sub={clients ? `${clients.length}명` : ''} />
       <Card flush>
         {!clients && <p className="muted small" style={{ padding: 16 }}>불러오는 중…</p>}
+        {error && (
+          <div style={{ padding: 16 }}>
+            <p className="small" style={{ marginBottom: 10 }}>{error}</p>
+            <button type="button" className="btn btn--sm" onClick={load}>다시 불러오기</button>
+          </div>
+        )}
         <ul className="list">
           {clients?.map((c) => (
             <li key={c.id}>

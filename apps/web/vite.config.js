@@ -16,6 +16,10 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('tesseract')) return 'ocr';
+          if (id.includes('@bryllim/workout-guide')) return 'exercise-art';
+          if (id.includes('/lib/catalog-expansion.js') || id.includes('\\lib\\catalog-expansion.js')) return 'catalog-data';
+          if (id.includes('@supabase') || id.includes('realtime-js') || id.includes('postgrest-js')) return 'supabase';
+          if (id.includes('react-dom') || id.includes('react-router') || /node_modules[\\/]react[\\/]/.test(id)) return 'react';
         },
       },
     },

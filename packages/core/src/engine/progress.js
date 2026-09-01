@@ -2,7 +2,7 @@
    progress.js — RIR 기반 자동조절 (workoutapp Engine 이식)
 
    메인 리프트: e1RM + 상한(세션당 +2.5% / -3%) → 중량·반복 추천
-   보조: 세트별 이중 점진 (반복 +1 → 상한이면 증량 후 하한 리셋)
+   일반 종목: 최근 기록을 그대로 불러와 사용자가 오늘 수행을 결정
    레스트포즈: 고정 중량에서 총 반복수로 진행
    ============================================================ */
 
@@ -102,13 +102,13 @@ export function setTargets(ex, ctx = {}) {
     for (let i = 0; i < sets; i++) {
       out.push({
         w: w0, reps, kind: 'main', e1,
-        text: `${w0}${u} × ${reps}회 @RIR${rir}`,
+        text: `${w0}${u} × ${reps}회`,
       });
     }
     return out;
   }
 
-  /* ── 보조 · 레스트포즈 (이중 점진) ── */
+  /* ── 일반 종목: 최근 기록을 그대로 불러온다. 자동 증량하지 않는다. ── */
   const prev = ctx.prevSets || [];
   for (let i = 0; i < sets; i++) {
     const p = prev[i] && (prev[i].done !== false) && +prev[i].w
@@ -118,24 +118,16 @@ export function setTargets(ex, ctx = {}) {
         w: '', reps: repLo, kind: 'first',
         text: ex.mode === 'restpause'
           ? `무게 자율 · 총 ${repLo}~${repHi}회`
-          : `무게 자율 · ${repLo}~${repHi}회 @RIR${rir}`,
+          : `무게 자율 · ${repLo}~${repHi}회`,
       });
       continue;
     }
     const pw = +p.w;
     const pr = +p.reps;
-    if (pr >= repHi) {
-      const nw = snapWeight(pw + step, step);
-      out.push({
-        w: nw, reps: repLo, kind: 'up',
-        text: `${nw}${u} × ${repLo}회 ▲증량`,
-      });
-    } else {
-      out.push({
-        w: pw, reps: pr + 1, kind: 'rep',
-        text: `${pw}${u} × ${pr + 1}회` + (ex.mode === 'restpause' ? ' (총합)' : ''),
-      });
-    }
+    out.push({
+      w: pw, reps: pr, kind: 'previous',
+      text: `${pw}${u} × ${pr}회`,
+    });
   }
   return out;
 }
@@ -207,10 +199,8 @@ export function progressiveOverloadLines(ex, prevSets = [], stats = {}) {
   let rule = '';
   if (ex.lift || stats[ex.exercise_code]?.e1rm) {
     rule = '메인: e1RM 기준 · 세션당 상승 최대 2.5% / 하락 최대 3%. 증량 단위가 크면 반복수가 먼저 올라갑니다.';
-  } else if (ex.mode === 'restpause') {
-    rule = '레스트포즈: RIR 대신 고정 중량에서의 총 반복(밀도)으로 진행합니다.';
   } else {
-    rule = '보조: 같은 세트에서 반복 +1 → 상한 도달 시 1단위 증량 후 하한으로 리셋 (이중 점진).';
+    rule = '지난 기록을 그대로 불러옵니다. 오늘 중량과 횟수는 직접 정할 수 있습니다.';
   }
   return { lines, rule };
 }

@@ -46,7 +46,7 @@ export default function ClientOverload() {
         const po = progressiveOverloadLines(it, prev || [], stats);
         const prevText = (prev || [])
           .filter((s) => s.done && +s.reps > 0)
-          .map((s) => `${s.w}×${s.reps}${s.rir != null ? `(R${s.rir})` : ''}`)
+          .map((s) => `${s.w}×${s.reps}`)
           .join(' / ');
         built.push({
           name: it.name,
@@ -84,10 +84,8 @@ export default function ClientOverload() {
     <>
       <TopBar title={client.name} sub="다음 목표 미리보기" back />
 
-      <Note kind="volt" title="자동조절 규칙">
-        <p className="small">메인: 지난 수행 기준으로 세션당 소폭 증·감. 증량 단위가 크면 반복이 먼저 오릅니다.</p>
-        <p className="small">보조: 반복 +1 → 상한이면 증량 후 하한으로.</p>
-        <p className="small">레스트포즈: 총 반복으로 진행.</p>
+      <Note kind="volt" title="지난 기록을 기준으로 봅니다">
+        <p className="small">일반 종목은 최근 중량과 횟수를 그대로 보여줍니다. 오늘 상태에 맞게 트레이너가 직접 조정하세요.</p>
       </Note>
 
       {rows?.homework && (
@@ -103,7 +101,7 @@ export default function ClientOverload() {
 
       {rows && rows.items.length === 0 && (
         <Card>
-          <Empty title="과부하를 계산할 루틴이 없습니다">
+          <Empty title="다음 목표를 만들 루틴이 없습니다">
             먼저 루틴을 저장해 숙제로 보내세요.
           </Empty>
           <Link className="btn btn--block" to={`/t/clients/${memberId}`}>

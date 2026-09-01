@@ -16,18 +16,21 @@ export const ME = {
   member:  { id: 'u-member',  name: '김지훈', role: 'member' },
   trainer: { id: 'u-trainer', name: '박서연', role: 'trainer' },
   owner:   { id: 'u-owner',   name: '이상혁', role: 'owner' },
+  admin:   { id: 'u-admin',   name: 'GymLink 운영팀', role: 'admin' },
 };
 
 /* ---------- 헬스장 ---------- */
 export const GYMS = [
   {
     id: 'g-1', name: '서면 스트렝스짐', dong: '부산진구 부전동',
-    distance_m: 340, open: '05:30–24:00', members: 412,
+    distance_m: 340, lat: 35.1578, lng: 129.0594, rating_avg: 4.8,
+    open: '05:30–24:00', members: 412,
     machines: ['POWER_RACK','SMITH','BENCH_FLAT','BENCH_ADJ','BARBELL','PLATE_SMALL','EZ_BAR','DUMBBELL','KETTLEBELL','CABLE_CROSS','LAT_PULLDOWN','SEATED_ROW','LEG_PRESS','LEG_EXT','LEG_CURL','HIP_ABD','DIP_STATION','PULLUP_BAR','TREADMILL','CYCLE','MAT','BOX','BAND'],
     plans: [
       { id: 'p-1', kind: 'membership', name: '6개월 회원권', months: 6, price: 390000, list_price: 480000 },
       { id: 'p-2', kind: 'membership', name: '3개월 회원권', months: 3, price: 240000, list_price: 270000 },
       { id: 'p-3', kind: 'pt', name: 'PT 20회', sessions: 20, price: 1200000, list_price: 1400000 },
+      { id: 'p-day-1', kind: 'daily', name: '일일 이용권', valid_days: 1, price: 15000, list_price: 15000, metadata: { valid_hours: 24, reentry_allowed: false } },
     ],
     photos: [
       { id: 'ph-1', machine_code: 'POWER_RACK', caption: '파워랙 4대 · 2.5kg 원판 있음', tone: '#3B4250' },
@@ -36,7 +39,7 @@ export const GYMS = [
       { id: 'ph-4', machine_code: 'CABLE_CROSS',caption: '케이블 크로스오버',            tone: '#4A4050' },
     ],
     offers: [
-      { key: 'routine',  title: '기구 기준 루틴',   desc: '이 헬스장에 있는 기구로만 짠 주간 루틴' },
+      { key: 'routine',  title: '내 헬스장 루틴',   desc: '선택한 헬스장 환경에 맞춘 주간 루틴' },
       { key: 'template', title: '관장님 추천 루틴', desc: '초보자용 3분할 · 관장이 직접 짠 것' },
       { key: 'body',     title: '체성분 기록',      desc: '측정 결과지를 찍어서 기록' },
       { key: 'refund',   title: '해지 시 환불액',   desc: '지금 해지하면 얼마 돌려받는지' },
@@ -44,7 +47,8 @@ export const GYMS = [
   },
   {
     id: 'g-2', name: '전포 헬스클럽', dong: '부산진구 전포동',
-    distance_m: 820, open: '06:00–23:00', members: 190,
+    distance_m: 820, lat: 35.1542, lng: 129.0648, rating_avg: 4.6,
+    open: '06:00–23:00', members: 190,
     machines: ['SMITH','BENCH_FLAT','LAT_PULLDOWN','SEATED_ROW','CHEST_PRESS','LEG_PRESS','LEG_EXT','DUMBBELL','TREADMILL','MAT'],
     photos: [
       { id: 'ph-5', machine_code: 'SMITH',      caption: '스미스 머신', tone: '#3F4652' },
@@ -54,13 +58,14 @@ export const GYMS = [
       { id: 'p-4', kind: 'membership', name: '3개월 회원권', months: 3, price: 180000, list_price: 210000 },
     ],
     offers: [
-      { key: 'routine', title: '기구 기준 루틴', desc: '보유 기구 6종 기준' },
+      { key: 'routine', title: '내 헬스장 루틴', desc: '현재 헬스장 환경에 맞춤' },
       { key: 'body',    title: '체성분 기록',    desc: '측정 결과지를 찍어서 기록' },
     ],
   },
   {
     id: 'g-3', name: '해운대 바디랩', dong: '해운대구 우동',
-    distance_m: 4600, open: '24시간', members: 610,
+    distance_m: 4600, lat: 35.1631, lng: 129.1635, rating_avg: 4.9,
+    open: '24시간', members: 610,
     machines: ['POWER_RACK','HALF_RACK','SMITH','BENCH_FLAT','BENCH_ADJ','BARBELL','PLATE_SMALL','EZ_BAR','TRAP_BAR','DUMBBELL','KETTLEBELL','LANDMINE','FUNC_TRAINER','CABLE_CROSS','LAT_PULLDOWN','SEATED_ROW','CHEST_PRESS','PEC_DECK','SHOULDER_PR','LEG_PRESS','HACK_SQUAT','LEG_EXT','LEG_CURL','HIP_ABD','HIP_ADD','HIP_THRUST_M','CALF_MACHINE','BACK_EXT','AB_MACHINE','ASSIST_PULLUP','DIP_STATION','PULLUP_BAR','TREADMILL','CYCLE','ROWER','STAIRMILL','MAT','BAND','BOX','TRX','MEDBALL','SLED'],
     photos: [
       { id: 'ph-7', machine_code: 'FUNC_TRAINER', caption: '펑셔널 트레이너 2대', tone: '#404A58' },
@@ -72,7 +77,7 @@ export const GYMS = [
       { id: 'p-6', kind: 'pt', name: 'PT 10회', sessions: 10, price: 700000, list_price: 750000 },
     ],
     offers: [
-      { key: 'routine',  title: '기구 기준 루틴',   desc: '보유 기구 16종 — 전 분할 가능' },
+      { key: 'routine',  title: '내 헬스장 루틴',   desc: '현재 헬스장 환경에 맞춤' },
       { key: 'template', title: '트레이너 루틴 3종', desc: '입문 / 근비대 / 감량' },
       { key: 'body',     title: '체성분 기록',      desc: '측정 결과지를 찍어서 기록' },
       { key: 'refund',   title: '해지 시 환불액',   desc: '지금 해지하면 얼마 돌려받는지' },
@@ -84,12 +89,22 @@ export const GYMS = [
 export const MY_MEMBERSHIP = {
   id: 'ms-1', gym_id: 'g-1', plan_name: '6개월 회원권',
   paid_amount: 390000, starts_on: '2026-05-01', ends_on: '2026-10-31',
+  is_active: true,
+  price_plans: { id: 'p-1', kind: 'membership', name: '6개월 회원권', months: 6 },
 };
 
 export const MY_PT = {
   id: 'pt-1', gym_id: 'g-1', trainer_id: 'u-trainer', trainer_name: '박서연',
   paid_amount: 1200000, list_price: 1400000, total_sessions: 20, used_sessions: 7,
 };
+
+export const PAYMENT_ORDERS = [
+  {
+    id: 'ord-demo-1', member_id: 'u-member', member_name: '김지훈', gym_id: 'g-1',
+    plan_id: 'p-1', order_name: '6개월 회원권', amount: 390000, status: 'paid', provider: 'demo',
+    paid_at: '2026-07-01T10:20:00+09:00', created_at: '2026-07-01T10:18:00+09:00',
+  },
+];
 
 /* ---------- 저장된 루틴 ---------- */
 export const SAVED_ROUTINES = [
@@ -194,6 +209,29 @@ export const GYM_ROSTER = [
   { id:'m-3', name:'정우성', plan:'6개월 회원권', starts:'2026-02-01', ends:'2026-07-31', paid:390000, active:true },
   { id:'m-4', name:'한지민', plan:'3개월 회원권', starts:'2026-07-20', ends:'2026-10-19', paid:240000, active:true },
   { id:'m-5', name:'오세훈', plan:'6개월 회원권', starts:'2026-01-10', ends:'2026-07-09', paid:360000, active:false },
+];
+
+/* ---------- 앱 내 대화 · 신고 ---------- */
+export const THREADS = [
+  {
+    id: 'th-1', kind: 'pt', gym_id: 'g-1', member_id: 'u-member',
+    trainer_id: 'u-trainer', member_name: '김지훈', trainer_name: '박서연',
+  },
+];
+
+export const MESSAGES = [
+  { id: 'msg-1', thread_id: 'th-1', sender_id: 'u-trainer', body: '오늘 스쿼트는 무리하지 말고 목표 반복 수까지만 해요.', created_at: '2026-07-28T09:10:00+09:00' },
+  { id: 'msg-2', thread_id: 'th-1', sender_id: 'u-member', body: '네! 무릎이 불편하면 바로 말씀드릴게요.', created_at: '2026-07-28T09:14:00+09:00' },
+  { id: 'msg-3', thread_id: 'th-1', sender_id: 'u-trainer', body: '좋아요. 운동 후 식사 사진도 여기로 보내주세요.', created_at: '2026-07-28T09:16:00+09:00' },
+];
+
+export const NOTIFICATIONS = [
+  { id: 'noti-1', user_id: 'u-trainer', type: 'booking_created', title: '새 PT 예약', body: '김지훈 회원이 9월 2일 18:00에 예약했습니다.', read_at: null, created_at: '2026-09-01T09:20:00+09:00' },
+];
+
+export const REPORTS = [
+  { id: 'rep-1', reporter_name: '익명 회원', target_name: '미확인 트레이너', reason: 'private_contact', detail: '개인 연락처로 대화를 유도했습니다.', status: 'open', created_at: '2026-07-28T11:20:00+09:00' },
+  { id: 'rep-2', reporter_name: '트레이너 A', target_name: '익명 회원', reason: 'harassment', detail: '반복적인 사적 만남 요구가 있었습니다.', status: 'reviewing', created_at: '2026-07-27T16:40:00+09:00' },
 ];
 
 /* ---------- 지역 (카닥식 위치 선택) ---------- */

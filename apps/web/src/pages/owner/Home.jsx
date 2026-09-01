@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { TopBar, Card, Chip, Note, Plate, Gauge, won } from '../../ui/bits.jsx';
-import { gymRoster, gymMachines, getGym, machineCatalog } from '../../lib/api.js';
+import { TopBar, Card, Chip, Empty, Note, Plate, Gauge, won } from '../../ui/bits.jsx';
+import { gymRoster, gymMachineInventory, gymPhotos, getGym } from '../../lib/api.js';
 import { useSession } from '../../lib/session.jsx';
 
 /* 관장 현황.
@@ -13,16 +13,25 @@ import { useSession } from '../../lib/session.jsx';
 export default function OwnerHome() {
   const { session } = useSession();
   const [d, setD] = useState(null);
-  const catalog = machineCatalog();
-
+  const [error, setError] = useState('');
   useEffect(() => {
+    if (!session.gymId) { setD(null); return undefined; }
+    let alive = true;
     (async () => {
-      const [roster, machines, gym] = await Promise.all([
-        gymRoster(session.gymId), gymMachines(session.gymId), getGym(session.gymId),
-      ]);
-      setD({ roster, machines, gym });
+      try {
+        const [roster, machines, photos, gym] = await Promise.all([
+          gymRoster(session.gymId), gymMachineInventory(session.gymId), gymPhotos(session.gymId), getGym(session.gymId),
+        ]);
+        if (alive) setD({ roster, machines, photos, gym });
+      } catch (cause) {
+        if (alive) setError(cause.message || '운영 정보를 불러오지 못했습니다.');
+      }
     })();
+    return () => { alive = false; };
   }, [session.gymId]);
+
+  if (!session.gymId) return <><TopBar title="현황" sub="관장 콘솔" /><Card><Empty title="연결된 헬스장이 없습니다">본사에서 사업장 확인을 마치면 머신·가격표·회원 관리가 열립니다.</Empty></Card></>;
+  if (error) return <><TopBar title="현황" sub="관장 콘솔" /><Note kind="stop"><p className="small">{error}</p></Note></>;
 
   if (!d) return <><TopBar title="현황" /><Card><p className="muted small">불러오는 중…</p></Card></>;
 
@@ -31,7 +40,11 @@ export default function OwnerHome() {
     const left = Math.ceil((new Date(m.ends) - new Date()) / 86400000);
     return left <= 30 && left >= 0;
   });
-  const coverage = Math.round((d.machines.length / catalog.length) * 100);
+  const completedFields = d.machines.reduce((sum, machine) => sum
+    + Number(Boolean(machine.brand))
+    + Number(Boolean(machine.model_name))
+    + Number(d.photos.some((photo) => photo.machine_code === machine.code)), 0);
+  const profileScore = d.machines.length ? Math.round((completedFields / (d.machines.length * 3)) * 100) : 0;
 
   return (
     <>
@@ -75,44 +88,43 @@ export default function OwnerHome() {
         </Card>
       )}
 
-      <Card title="검색 노출" note="회원이 기구로 헬스장을 찾을 때">
+      <Card title="머신 정보 완성도" note="브랜드·모델·사진을 채우면 회원이 비교하기 쉬워집니다">
         <div className="row row--between tiny muted" style={{ marginBottom: 5 }}>
-          <span>등록된 기구 {d.machines.length} / {catalog.length}종</span>
-          <span className="mono">{coverage}%</span>
+          <span>등록 머신 {d.machines.length}개</span>
+          <span className="mono">{profileScore}%</span>
         </div>
-        <Gauge value={coverage} good={coverage >= 70} />
-        {coverage < 70 && (
-          <Note kind="volt" title="등록되지 않은 기구가 있으면 검색에서 빠집니다">
+        <Gauge value={profileScore} good={profileScore >= 70} />
+        {profileScore < 70 && (
+          <Note kind="volt" title="설치된 머신을 실제 모습 그대로 보여주세요">
             <p className="small">
-              회원이 &lsquo;레그컬 있는 곳&rsquo;으로 찾을 때, 실제로 있어도 등록이 안 되어 있으면
-              결과에 나오지 않습니다.
+              제조사와 모델명, 실제 사진을 채우면 회원이 지도에서 헬스장을 비교할 때 더 정확한 정보를 볼 수 있습니다.
             </p>
           </Note>
         )}
         <Link className="btn btn--ghost btn--block btn--sm" to="/o/machines" style={{ marginTop: 10 }}>
-          보유 기구 관리
+          머신 정보 관리
         </Link>
       </Card>
 
       <Card>
         <div className="row row--between" style={{ alignItems: 'center' }}>
           <div>
-            <p className="eyebrow">추천 루틴</p>
-            <p className="card__title" style={{ fontSize: 16 }}>회원에게 공개</p>
-            <p className="card__note">보유 기구로 짠 입문·추천 루틴</p>
+            <p className="eyebrow">우리 헬스장 루틴</p>
+            <p className="card__title" style={{ fontSize: 16 }}>직접 만들어 회원에게 공개</p>
+            <p className="card__note">운동·세트·반복·휴식을 세부 편집</p>
           </div>
-          <Link className="btn btn--sm" to="/o/recommend">만들기</Link>
+          <Link className="btn btn--sm" to="/o/recommend">루틴 만들기</Link>
         </div>
       </Card>
 
-      <Card title="가격표" note="앱에서는 안내만 하고 결제는 현장에서 받습니다">
+      <Card title="가격표" note="회원이 지도 상세에서 확인하는 공개 가격">
         <ul className="list">
           {d.gym.plans.map((p) => (
             <li key={p.id} className="list__item" style={{ cursor: 'default' }}>
               <div className="list__body">
                 <div className="list__title">{p.name}</div>
                 <div className="list__meta">
-                  {p.kind === 'pt' ? `PT ${p.sessions}회` : `${p.months}개월`}
+                  {p.kind === 'pt' ? `PT ${p.sessions}회` : p.kind === 'daily' ? `${p.valid_days || 1}일 이용` : p.months ? `${p.months}개월` : '부가 상품'}
                 </div>
               </div>
               <div className="list__right mono" style={{ color: 'var(--ink)', fontWeight: 600 }}>
@@ -127,6 +139,9 @@ export default function OwnerHome() {
             분쟁이 생겼을 때 근거가 됩니다.
           </p>
         </Note>
+        <Link className="btn btn--ghost btn--block btn--sm" to="/o/prices" style={{ marginTop: 10 }}>
+          가격표 추가·수정
+        </Link>
       </Card>
     </>
   );

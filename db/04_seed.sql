@@ -35,7 +35,7 @@ values
   ('BENCH_ADJ',     '조절식 벤치',        'Adjustable Bench',  'bench', '{bench_flat,bench_incline,bench_decline}', false, true,  null,'{"인클라인벤치","각도벤치"}', 21),
 
   -- 프리웨이트
-  ('BARBELL',       '바벨 + 원판',        'Barbell',           'free', '{barbell}',                                true,  true,  5,   '{"바벨","봉"}', 30),
+  ('BARBELL',       '올림픽 바벨',         'Olympic Barbell',   'free', '{barbell}',                                true,  true,  5,   '{"바벨","봉"}', 30),
   ('PLATE_SMALL',   '소형 원판 (1~2.5kg)','Micro Plates',      'free', '{plates_small}',                           true,  false, 1.25,'{"짤판","마이크로플레이트"}', 31),
   ('EZ_BAR',        'EZ 바',             'EZ Bar',            'free', '{ez_bar}',                                 true,  true,  2.5, '{"이지바","컬바"}', 32),
   ('TRAP_BAR',      '트랩바',            'Trap Bar',          'free', '{trap_bar}',                               true,  true,  5,   '{"헥스바"}', 33),
@@ -131,7 +131,7 @@ values
   ('PULLUP',          '턱걸이',            'Pull-up',               'vertical_pull', '{광배,이두}', '{pullup_bar}', true, '그립 폭을 바꾸면 자극이 달라진다', true, 3, '{shoulder,elbow}'),
   ('CHINUP',          '친업',              'Chin-up',               'vertical_pull', '{광배,이두}', '{pullup_bar}', true, '손바닥이 나를 향하게', true, 3, '{elbow}'),
   ('ASSISTED_PULLUP', '어시스트 턱걸이',    'Assisted Pull-up',      'vertical_pull', '{광배}', '{machine_assisted_pullup}', false, null, true, 1, '{shoulder}'),
-  ('LAT_PULLDOWN_W',  '랫풀다운',          'Lat Pulldown',          'vertical_pull', '{광배,이두}', '{cable_high}', true, '와이드·클로즈·언더 다 가능', true, 1, '{shoulder}'),
+  ('LAT_PULLDOWN_W',  '케이블 랫 풀다운',  'Cable Lat Pulldown',    'vertical_pull', '{광배,이두}', '{cable_high}', true, '와이드·클로즈·언더 그립', true, 1, '{shoulder}'),
   ('LAT_PULLDOWN_N',  '뉴트럴 랫풀다운',    'Neutral Lat Pulldown',  'vertical_pull', '{광배}', '{cable_high}', true, '평행 그립 핸들', true, 1, '{}'),
   ('STRAIGHT_PULLOVER','케이블 풀오버',     'Cable Pullover',        'vertical_pull', '{광배}', '{cable_high}', true, '팔을 편 채로', false, 2, '{shoulder}'),
 
@@ -166,7 +166,7 @@ values
   ('KB_SWING',        '케틀벨 스윙',        'Kettlebell Swing',      'hinge', '{둔근,햄스트링}', '{kettlebell}', true, null, true, 2, '{low_back}'),
   ('HIP_THRUST_BB',   '바벨 힙쓰러스트',    'Barbell Hip Thrust',    'hinge', '{둔근}', '{barbell,bench_flat}', false, null, true, 2, '{}'),
   ('HIP_THRUST_MACH', '힙쓰러스트 머신',    'Machine Hip Thrust',    'hinge', '{둔근}', '{machine_glute}', false, null, true, 1, '{}'),
-  ('CABLE_PULLTHRU',  '케이블 풀스루',      'Cable Pull-through',    'hinge', '{둔근,햄스트링}', '{cable_low}', true, null, true, 1, '{}'),
+  ('CABLE_PULLTHRU',  '케이블 힙 힌지',     'Cable hip hinge',       'hinge', '{둔근,햄스트링}', '{cable_low}', true, '둔근 보조 힙힌지', false, 1, '{}'),
   ('BACK_EXT_EX',     '백 익스텐션',        'Back Extension',        'hinge', '{척추기립근,둔근}', '{machine_back_ext}', false, null, false, 1, '{low_back}'),
   ('GLUTE_BRIDGE',    '글루트 브릿지',      'Glute Bridge',          'hinge', '{둔근}', '{floor_mat}', true, null, false, 1, '{}'),
 

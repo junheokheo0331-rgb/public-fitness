@@ -114,13 +114,6 @@ export default function WorkoutSettings() {
                 onChange={(e) => store.setBaseline(lift, 'reps', Number(e.target.value))}
               />
             </Field>
-            <Field label="RIR">
-              <input
-                className="input input--num"
-                value={s.baseline[lift]?.rir ?? 0}
-                onChange={(e) => store.setBaseline(lift, 'rir', Number(e.target.value))}
-              />
-            </Field>
           </div>
         ))}
       </Card>
@@ -153,6 +146,20 @@ export default function WorkoutSettings() {
       </Card>
 
       <Card title="타이머 · 알림">
+        <Field label="새 운동 기본 휴식시간">
+          <select className="input" value={s.defaultRest ?? 90} onChange={(e) => store.updateSettings({ defaultRest: Number(e.target.value) })}>
+            <option value="0">사용 안 함</option>
+            <option value="30">30초</option>
+            <option value="45">45초</option>
+            <option value="60">1분</option>
+            <option value="90">1분 30초</option>
+            <option value="120">2분</option>
+            <option value="150">2분 30초</option>
+            <option value="180">3분</option>
+            <option value="240">4분</option>
+            <option value="300">5분</option>
+          </select>
+        </Field>
         {[
           ['autoRest', '세트 완료 시 자동 휴식'],
           ['sound', '휴식 종료 소리'],
@@ -188,7 +195,7 @@ export default function WorkoutSettings() {
 
       <Note title="자동조절">
         <p className="small">
-          메인 리프트는 지난 수행·RIR로 다음 무게를 잡고, 보조는 반복을 올린 뒤 무게를 올립니다.
+          지난 무게와 반복 기록을 바탕으로 다음 목표를 제안합니다.
         </p>
       </Note>
     </>

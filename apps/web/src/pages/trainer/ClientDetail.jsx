@@ -18,18 +18,26 @@ export default function ClientDetail() {
   const [routines, setRoutines] = useState(null);
   const [homework, setHomework] = useState(null);
   const [lastBody, setLastBody] = useState(null);
+  const [error, setError] = useState('');
 
   const reload = async () => {
-    const [cs, rs, hw] = await Promise.all([
-      myClients(), trainerRoutines(), memberHomework(memberId),
-    ]);
-    const c = cs.find((x) => x.id === memberId) ?? null;
-    setClient(c);
-    setRoutines(rs);
-    setHomework(hw);
-    if (c) {
-      const log = await bodyLog(memberId);
-      setLastBody(log[0] ?? null);
+    setError('');
+    try {
+      const [cs, rs, hw] = await Promise.all([
+        myClients(), trainerRoutines(), memberHomework(memberId),
+      ]);
+      const c = cs.find((x) => x.id === memberId) ?? null;
+      setClient(c);
+      setRoutines(rs);
+      setHomework(hw);
+      if (c) {
+        const log = await bodyLog(memberId);
+        setLastBody(log[0] ?? null);
+      }
+    } catch (err) {
+      console.error('회원 상세 조회 실패', err);
+      setError('회원 관리 정보를 불러오지 못했습니다.');
+      setClient(null);
     }
   };
 
@@ -48,7 +56,14 @@ export default function ClientDetail() {
     return (
       <>
         <TopBar title="회원" back />
-        <Card><Empty title="담당 회원이 아닙니다" /></Card>
+        <Card>
+          {error ? (
+            <div>
+              <Empty title={error} />
+              <button type="button" className="btn btn--block" onClick={reload}>다시 불러오기</button>
+            </div>
+          ) : <Empty title="담당 회원이 아닙니다" />}
+        </Card>
       </>
     );
   }
@@ -173,22 +188,25 @@ export default function ClientDetail() {
         {routines?.length === 0 && (
           <div style={{ padding: 16 }}>
             <Empty title="저장된 루틴이 없습니다">
-              헬스장 기구 기준으로 루틴을 만들어 두세요.
+              회원이 운동할 헬스장 환경에 맞춰 루틴을 만들어 두세요.
             </Empty>
           </div>
         )}
         <ul className="list">
           {routines?.map((r) => (
             <li key={r.id}>
-              <Link className="list__item" to={`/t/routines/${r.id}?member=${memberId}`}>
+              <div className="list__item" style={{ cursor: 'default' }}>
                 <div className="list__body">
                   <div className="list__title">{r.title}</div>
                   <div className="list__meta">
                     주 {r.days}회 · {GOAL_LABEL[r.goal] ?? r.goal} · {r.updated.replace(/-/g, '.')}
                   </div>
                 </div>
-                <div className="list__right">›</div>
-              </Link>
+                <div className="row" style={{ gap: 6 }}>
+                  <Link className="btn btn--sm" to={`/t/clients/${memberId}/workout/${r.id}`}>운동 시작</Link>
+                  <Link className="btn btn--sm btn--ghost" to={`/t/routines/${r.id}?member=${memberId}`}>편집</Link>
+                </div>
+              </div>
             </li>
           ))}
         </ul>

@@ -4,8 +4,10 @@ import { TopBar, Card, Chip, Note, Empty, Field } from '../../ui/bits.jsx';
 import {
   getTrainerSchedule, saveTrainerSchedule, listFixedSessions, createFixedSession,
   deleteFixedSession, listTrainerBookings, cancelBooking, myClients,
+  respondBooking,
 } from '../../lib/api.js';
 import { WEEKDAY_KO, dateStrLocal, weekdayMon0 } from '../../lib/booking.js';
+import { useSession } from '../../lib/session.jsx';
 
 const EMPTY_WEEK = () => ({ 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] });
 
@@ -16,6 +18,7 @@ function fmtWhen(iso) {
 }
 
 export default function TrainerSchedule() {
+  const { session } = useSession();
   const [weekly, setWeekly] = useState(EMPTY_WEEK());
   const [durationMin, setDurationMin] = useState(50);
   const [slotStepMin, setSlotStepMin] = useState(60);
@@ -34,8 +37,8 @@ export default function TrainerSchedule() {
 
   const load = async () => {
     const [sch, fx, bk, cs] = await Promise.all([
-      getTrainerSchedule('u-trainer'),
-      listFixedSessions('u-trainer'),
+      getTrainerSchedule(session.id),
+      listFixedSessions(session.id),
       listTrainerBookings({
         from: dateStrLocal(new Date()),
         to: dateStrLocal(new Date(Date.now() + 28 * 86400000)),
@@ -46,12 +49,12 @@ export default function TrainerSchedule() {
     setDurationMin(sch.durationMin || 50);
     setSlotStepMin(sch.slotStepMin || 60);
     setFixed(fx.filter((f) => f.active !== false));
-    setBookings(bk.filter((b) => b.status === 'booked'));
+    setBookings(bk.filter((b) => ['booked', 'requested', 'confirmed'].includes(b.status)));
     setClients(cs);
     if (!fxMember && cs[0]) setFxMember(cs[0].id);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [session.id]);
 
   const flash = (t) => {
     setMsg(t);
@@ -84,7 +87,7 @@ export default function TrainerSchedule() {
   const saveHours = async () => {
     setBusy(true);
     try {
-      await saveTrainerSchedule('u-trainer', { weekly, durationMin, slotStepMin });
+      await saveTrainerSchedule(session.id, { weekly, durationMin, slotStepMin });
       flash('영업 시간을 저장했습니다.');
     } finally {
       setBusy(false);
@@ -122,6 +125,20 @@ export default function TrainerSchedule() {
     () => bookings.filter((b) => dateStrLocal(new Date(b.starts_at)) === viewDate),
     [bookings, viewDate],
   );
+  const pending = bookings.filter((booking) => booking.status === 'requested');
+
+  const respond = async (id, decision) => {
+    setBusy(true);
+    try {
+      await respondBooking(id, decision);
+      flash(decision === 'confirmed' ? '예약을 확정했습니다.' : '예약을 거절했습니다.');
+      await load();
+    } catch (error) {
+      flash(error.message || '예약을 처리하지 못했습니다.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <>
@@ -139,6 +156,24 @@ export default function TrainerSchedule() {
           회원과 매주 같은 요일·시간을 정해 두면 자동으로 슬롯이 막히고, 회원 캘린더에도 반영됩니다.
         </p>
       </Note>
+
+      <Card title="확인할 예약" note={pending.length ? `${pending.length}건` : '대기 없음'} flush>
+        {pending.length === 0 && <div style={{ padding: 16 }}><Empty title="새 예약 요청이 없습니다" /></div>}
+        <ul className="list">
+          {pending.map((booking) => (
+            <li key={booking.id} className="list__item" style={{ cursor: 'default' }}>
+              <div className="list__body">
+                <div className="list__title">{booking.member_name}</div>
+                <div className="list__meta mono">{fmtWhen(booking.starts_at)}</div>
+              </div>
+              <div className="row" style={{ gap: 6 }}>
+                <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={() => respond(booking.id, 'rejected')}>거절</button>
+                <button type="button" className="btn btn--sm" disabled={busy} onClick={() => respond(booking.id, 'confirmed')}>확정</button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Card>
 
       <Card title="수업 길이">
         <div className="rowfields">
@@ -249,7 +284,7 @@ export default function TrainerSchedule() {
                   </div>
                 </div>
                 <div className="row" style={{ gap: 6 }}>
-                  <Chip kind="sub">{b.status}</Chip>
+                  <Chip kind={b.status === 'confirmed' || b.status === 'booked' ? 'go' : 'sub'}>{b.status === 'requested' ? '대기' : '확정'}</Chip>
                   <button type="button" className="btn btn--sm btn--ghost" onClick={async () => { await cancelBooking(b.id); load(); }}>
                     취소
                   </button>

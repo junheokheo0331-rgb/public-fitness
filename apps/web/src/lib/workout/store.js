@@ -212,12 +212,12 @@ class WorkoutStoreClass {
   }
 
   findExById(id) {
+    const extra = (this._state.session?.extraItems || []).find((e) => e.id === id);
+    if (extra) return extra;
     for (const p of this._state.programs) {
       const hit = (p.items || []).find((e) => e.id === id);
       if (hit) return hit;
     }
-    const extra = (this._state.session?.extraItems || []).find((e) => e.id === id);
-    if (extra) return extra;
     return { id, name: id };
   }
 
@@ -234,6 +234,77 @@ class WorkoutStoreClass {
       sess.setsMap = { ...sess.setsMap, [ex.id]: sets };
     });
     return ex;
+  }
+
+  /** 라이브 운동 편집 — 당일 세션을 루틴처럼 자유롭게 바꾼다. */
+  removeFromSession(exId) {
+    const sess = this._state.session;
+    if (!sess || !exId) return;
+    this._mutate(() => {
+      sess.order = (sess.order || []).filter((id) => id !== exId);
+      sess.extraItems = (sess.extraItems || []).filter((item) => item.id !== exId);
+      const next = { ...sess.setsMap };
+      delete next[exId];
+      sess.setsMap = next;
+    });
+  }
+
+  replaceInSession(oldExId, ex) {
+    const sess = this._state.session;
+    if (!sess || !oldExId || !ex) return null;
+    const stats = this.getExerciseStats();
+    const sets = initSetsForExercise(ex, this.prevSetsFor(ex.id), stats, this._state.settings);
+    this._mutate(() => {
+      sess.order = (sess.order || []).map((id) => id === oldExId ? ex.id : id);
+      sess.extraItems = [...(sess.extraItems || []).filter((item) => item.id !== oldExId), ex];
+      const next = { ...sess.setsMap };
+      delete next[oldExId];
+      next[ex.id] = sets;
+      sess.setsMap = next;
+    });
+    return ex;
+  }
+
+  patchSessionExercise(exId, patch) {
+    const sess = this._state.session;
+    if (!sess || !exId) return;
+    const current = this.findExById(exId);
+    this._mutate(() => {
+      sess.extraItems = [
+        ...(sess.extraItems || []).filter((item) => item.id !== exId),
+        { ...current, ...patch, id: exId },
+      ];
+    });
+  }
+
+  reorderSession(from, to) {
+    const sess = this._state.session;
+    if (!sess) return;
+    this._mutate(() => {
+      const order = [...(sess.order || [])];
+      const [picked] = order.splice(from, 1);
+      order.splice(to, 0, picked);
+      sess.order = order;
+    });
+  }
+
+  addSessionSet(exId) {
+    const sess = this._state.session;
+    if (!sess?.setsMap?.[exId]) return;
+    this._mutate(() => {
+      const sets = [...sess.setsMap[exId]];
+      const previous = sets.at(-1) || { w: '', reps: '', done: false };
+      sets.push({ ...previous, done: false, target_text: previous.target_text || '' });
+      sess.setsMap = { ...sess.setsMap, [exId]: sets };
+    });
+  }
+
+  removeSessionSet(exId) {
+    const sess = this._state.session;
+    if (!sess?.setsMap?.[exId] || sess.setsMap[exId].length <= 1) return;
+    this._mutate(() => {
+      sess.setsMap = { ...sess.setsMap, [exId]: sess.setsMap[exId].slice(0, -1) };
+    });
   }
 
   startSession({ programId, dateStr, free } = {}) {
@@ -266,7 +337,7 @@ class WorkoutStoreClass {
   }
 
   /** 헬스장 루틴(body.days[n].items) → 라이브 세션 */
-  startFromGymDay({ title, day, sourceRoutineId, dateStr } = {}) {
+  startFromGymDay({ title, day, sourceRoutineId, sourceDayIndex = 0, dateStr } = {}) {
     const ds = dateStr || getTodayStr();
     const stats = this.getExerciseStats();
     const items = (day?.items || []).map((it) => itemToEditable(it));
@@ -280,6 +351,7 @@ class WorkoutStoreClass {
       id: uid('s_'),
       programId: null,
       sourceRoutineId: sourceRoutineId || null,
+      sourceDayIndex,
       dateStr: ds,
       free: false,
       title: title || day?.name || '헬스장 루틴',
@@ -306,6 +378,8 @@ class WorkoutStoreClass {
         sets: clone(sess.setsMap),
         free: sess.free,
         title: sess.title,
+        order: [...(sess.order || [])],
+        exercises: (sess.order || []).map((id) => clone(this.findExById(id))),
       };
       day.sessions = [...(day.sessions || []), saved];
       this._state.logs[sess.dateStr] = day;

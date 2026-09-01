@@ -53,7 +53,7 @@ export default function DayHistory() {
                     {done.map((s, i) => (
                       <span key={i}>
                         {i > 0 ? ' · ' : ''}
-                        {s.w}×{s.reps}{s.rir != null ? `@R${s.rir}` : ''}
+                        {s.w}×{s.reps}
                       </span>
                     ))}
                   </p>

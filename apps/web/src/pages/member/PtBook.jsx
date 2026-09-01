@@ -81,7 +81,7 @@ export default function PtBook() {
   const cells = useMemo(() => monthMatrix(cursor.y, cursor.m), [cursor]);
   const today = dateStrLocal(new Date());
   const trainer = trainers.find((t) => t.id === trainerId);
-  const upcoming = mine.filter((b) => b.status === 'booked' && new Date(b.starts_at) >= new Date());
+  const upcoming = mine.filter((b) => ['booked', 'requested', 'confirmed'].includes(b.status) && new Date(b.starts_at) >= new Date());
   const left = pt ? pt.total_sessions - pt.used_sessions : null;
 
   const confirm = async () => {
@@ -90,7 +90,7 @@ export default function PtBook() {
     setErr(null);
     try {
       await createBooking({ trainerId, startsAt: pick.starts_at });
-      setMsg('예약이 확정되었습니다.');
+      setMsg('예약을 요청했습니다. 트레이너가 확정하면 알려드릴게요.');
       setPick(null);
       await reloadMine();
       const from = dateStrLocal(new Date(cursor.y, cursor.m, 1));
@@ -247,6 +247,9 @@ export default function PtBook() {
                     {b.note ? ` · ${b.note}` : ''}
                   </div>
                 </div>
+                <Chip kind={b.status === 'confirmed' || b.status === 'booked' ? 'go' : 'sub'}>
+                  {b.status === 'requested' ? '확인 대기' : '확정'}
+                </Chip>
                 <button type="button" className="btn btn--sm btn--ghost" onClick={() => cancel(b.id)}>취소</button>
               </div>
             </li>

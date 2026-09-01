@@ -8,6 +8,7 @@
     "dev": "npm run dev -w @gymlink/web",
     "build": "npm run build -w @gymlink/web",
     "preview": "npm run preview -w @gymlink/web",
-    "test": "node packages/core/scripts/test.mjs"
+    "test": "node packages/core/scripts/test.mjs",
+    "check:kakao": "node scripts/check-kakao.mjs"
   }
 }

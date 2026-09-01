@@ -7,6 +7,7 @@ import {
   setTargets, appliedE1rm, statsFromSession, progressiveOverloadLines,
 } from '../src/engine/progress.js';
 import { searchExerciseCatalog } from '../src/lib/exercise-catalog.js';
+import { matchRoutineToAvailable } from '../src/engine/matching.js';
 import { calcRefund } from '../src/engine/refund.js';
 import { parseBodySheet, toRecord, normalize } from '../src/inbody/parse.js';
 
@@ -48,13 +49,13 @@ ok(`벤치 100kg×5 RIR2 → e1RM ${est}kg (115~125 범위)`, est > 115 && est <
 const nx = nextTarget({ weight: 100, reps: 5, rir: 2 }, { reps: [6,10], rir: 2 }, 5);
 ok(`다음 목표 ${nx.weight}kg × ${nx.reps}회 — ${nx.note}`, nx.weight % 5 === 0);
 
-console.log('\n[4b] workoutapp 이식 — 이중 점진 · 메인 e1RM');
+console.log('\n[4b] 운동 기록 — 지난 수행 유지 · 메인 e1RM');
 const dual = setTargets(
   { sets: 3, repLo: 8, repHi: 12, rir: 1, step: 5 },
   { prevSets: [{ w: 50, reps: 12, done: true }, { w: 50, reps: 10, done: true }, { w: 50, reps: 9, done: true }] },
 );
-ok('1세트 상한 도달 → 증량', dual[0].kind === 'up' && dual[0].w === 55);
-ok('2세트 반복 +1', dual[1].kind === 'rep' && dual[1].reps === 11);
+ok('지난 1세트 중량·횟수를 그대로 유지', dual[0].kind === 'previous' && dual[0].w === 50 && dual[0].reps === 12);
+ok('지난 2세트에 반복 수를 임의로 더하지 않음', dual[1].kind === 'previous' && dual[1].reps === 10);
 
 const main = setTargets(
   { sets: 3, repLo: 5, repHi: 6, rir: 2, step: 2.5, lift: '스쿼트' },
@@ -68,6 +69,17 @@ ok('세션당 상승 상한 약 2.5%', capped <= 103 && capped >= 102);
 const hit = searchExerciseCatalog('스쿼트', 3);
 ok('카탈로그에서 스쿼트 검색', hit.some((c) => c.name.includes('스쿼트')));
 
+const moved = matchRoutineToAvailable({ days: [{ name: '등', items: [{
+  exercise_code: 'OLD_PULL', name: '예전 랫풀다운', pattern: 'vertical_pull',
+  primary_muscles: ['latissimus_dorsi'], laterality: 'bilateral', sets: 3, rep_range: [8, 12],
+}] }] }, [{
+  code: 'ASSIST_PULL', name_ko: '어시스트 풀업', pattern: 'vertical_pull',
+  primary_muscles: ['latissimus_dorsi'], laterality: 'bilateral', machine_code: 'ASSIST', machine_name: '어시스트 머신',
+}]);
+ok('헬스장 이동 시 같은 동작·타깃 운동으로 대체',
+  moved.body.days[0].items[0].exercise_code === 'ASSIST_PULL' && moved.replacements.length === 1);
+ok('기존 세트·반복은 유지', moved.body.days[0].items[0].sets === 3 && moved.body.days[0].items[0].rep_range[1] === 12);
+
 const stMap = statsFromSession([
   { code: 'BENCH', sets: [{ w: 80, reps: 5, rir: 2, done: true }] },
 ]);
@@ -78,7 +90,7 @@ const po = progressiveOverloadLines(
   [{ w: 50, reps: 10, done: true }],
   {},
 );
-ok('점진적 과부하 라인 생성', po.lines.length === 3 && po.rule.includes('이중 점진'));
+ok('지난 기록 안내 라인 생성', po.lines.length === 3 && po.rule.includes('지난 기록'));
 
 console.log('\n[5] 환불 계산 — 기간제');
 const f1 = calcRefund({ amount: 600000, serviceFrom: '2026-01-01', serviceTo: '2026-06-30', asOf: '2026-02-01' });

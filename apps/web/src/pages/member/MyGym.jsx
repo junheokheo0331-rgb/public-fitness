@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { TopBar, Card, Chip, Note, Plate, Stack, Empty } from '../../ui/bits.jsx';
+import { useSession } from '../../lib/session.jsx';
 import {
-  myMembership, myPt, getGym, mySavedRoutines, createAutoRoutine,
-  listGymTemplates, copyRoutine, memberHomework,
+  myMembership, myPt, getGym, mySavedRoutines,
+  listGymTemplates, copyRoutine, memberHomework, myPortableRoutines, adaptRoutineToGym, myAccessCredential,
 } from '../../lib/api.js';
 
 const GOAL = {
@@ -12,31 +13,40 @@ const GOAL = {
 
 export default function MyGym() {
   const nav = useNavigate();
+  const { session } = useSession();
   const [state, setState] = useState(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
 
   const reload = useCallback(async () => {
-    const ms = await myMembership();
-    if (!ms) { setState({ none: true }); return; }
-    const [gym, pt, routines, templates, hw] = await Promise.all([
-      getGym(ms.gym_id),
-      myPt(),
-      mySavedRoutines(ms.gym_id),
-      listGymTemplates(ms.gym_id),
-      memberHomework('u-member'),
-    ]);
-    setState({ ms, gym, pt, routines, templates, hw });
-  }, []);
+    try {
+      const ms = await myMembership();
+      if (!ms) { setState({ none: true }); return; }
+      const [gym, pt, routines, templates, hw, portable, access] = await Promise.all([
+        getGym(ms.gym_id),
+        myPt(),
+        mySavedRoutines(ms.gym_id),
+        listGymTemplates(ms.gym_id),
+        memberHomework(session.id),
+        myPortableRoutines(ms.gym_id),
+        myAccessCredential(ms.gym_id),
+      ]);
+      setState({ ms, gym, pt, routines, templates, hw, portable, access });
+    } catch (error) {
+      setState({ error: error.message || '내 헬스장 정보를 불러오지 못했습니다.' });
+    }
+  }, [session.id]);
 
   useEffect(() => { reload(); }, [reload]);
 
   if (!state) return <><TopBar title="내 헬스장" /><Card><p className="muted small">불러오는 중…</p></Card></>;
 
+  if (state.error) return <><TopBar title="내 헬스장" /><Card><Empty title="정보를 불러오지 못했습니다" action={<button type="button" className="btn btn--sm" onClick={() => { setState(null); reload(); }}>다시 불러오기</button>}>{state.error}</Empty></Card></>;
+
   if (state.none) {
     return (
       <>
-        <TopBar title="내 헬스장" />
+        <TopBar title="내 헬스장" right={<Link className="btn btn--sm btn--ghost" to="/#nearby-gyms">변경</Link>} />
         <Card>
           <Empty
             title="다니는 헬스장이 없습니다"
@@ -49,7 +59,7 @@ export default function MyGym() {
     );
   }
 
-  const { ms, gym, pt, routines, templates, hw } = state;
+  const { ms, gym, pt, routines, templates, hw, portable, access } = state;
   const ptLeft = pt ? pt.total_sessions - pt.used_sessions : 0;
   const mine = routines.filter((r) => r.origin === 'auto' || r.origin === 'member');
   const fromOwner = routines.filter((r) => r.origin === 'owner');
@@ -57,25 +67,7 @@ export default function MyGym() {
   const openTemplates = templates.filter(
     (t) => !fromOwner.some((r) => r.title === t.title || r.id === t.id),
   );
-
-  const makeAuto = async () => {
-    setBusy(true);
-    setMsg(null);
-    try {
-      const row = await createAutoRoutine({
-        gymId: ms.gym_id,
-        days: 3,
-        goal: 'hypertrophy',
-        level: 2,
-      });
-      setMsg('이 헬스장 기구로 루틴을 만들었습니다.');
-      nav(`/my/routine/${row.id}`);
-    } catch (e) {
-      setMsg(e.message || '생성 실패');
-    } finally {
-      setBusy(false);
-    }
-  };
+  const isDayPass = ms.price_plans?.kind === 'daily';
 
   const takeTemplate = async (id) => {
     setBusy(true);
@@ -91,6 +83,23 @@ export default function MyGym() {
     }
   };
 
+  const moveRoutine = async (id) => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const result = await adaptRoutineToGym(id, ms.gym_id);
+      setMsg(result.replacements.length
+        ? `${result.replacements.length}개 운동을 현재 헬스장 머신으로 바꿨습니다.`
+        : '현재 헬스장에서 그대로 수행할 수 있습니다.');
+      await reload();
+      nav(`/my/routine/${result.routine.id}`);
+    } catch (error) {
+      setMsg(error.message || '루틴을 옮기지 못했습니다.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const renderList = (list) => (
     <ul className="list">
       {list.map((r) => (
@@ -101,7 +110,7 @@ export default function MyGym() {
                 <span className="list__title">{r.title}</span>
                 {r.origin === 'trainer' && <Chip kind="sub">트레이너</Chip>}
                 {r.origin === 'owner' && <Chip>관장님 추천</Chip>}
-                {r.origin === 'auto' && <Chip kind="machine">기구 맞춤</Chip>}
+                {r.origin === 'auto' && <Chip kind="machine">내 헬스장 맞춤</Chip>}
                 {r.stale && <Chip kind="stop">기구 확인</Chip>}
               </div>
               <div className="list__meta">
@@ -124,14 +133,28 @@ export default function MyGym() {
 
   return (
     <>
-      <TopBar title={gym.name} sub={`${ms.plan_name} · ${ms.ends_on.replace(/-/g, '.')}까지`} />
+      <TopBar title={gym.name} sub={`${ms.plan_name} · ${ms.ends_on.replace(/-/g, '.')}까지`} right={<Link className="btn btn--sm btn--ghost" to="/#nearby-gyms">헬스장 변경</Link>} />
 
       {msg && <Note kind="go"><p className="small">{msg}</p></Note>}
+
+      {isDayPass && (
+        <Card title="오늘의 일일권" note={`${ms.ends_on.replace(/-/g, '.')}까지`}>
+          <div className="row row--between">
+            <div>
+              <p className="eyebrow">입장 패스</p>
+              <strong>{gym.name}</strong>
+              <p className="tiny muted" style={{ marginTop: 4 }}>{ms.price_plans?.metadata?.reentry_allowed ? '유효기간 내 재입장 가능' : '1회 입장'}</p>
+            </div>
+            <div className="day-pass-code mono">{access?.qr_secret ? access.qr_secret.slice(-8).toUpperCase() : '발급 중'}</div>
+          </div>
+          <p className="tiny muted" style={{ marginTop: 10 }}>프런트에서 이 입장 코드를 보여주세요. 출입기 연동 헬스장은 자동 등록됩니다.</p>
+        </Card>
+      )}
 
       <Card title="오늘 뭐 하지" note={`${gym.name} · 보유 ${gym.machines.length}종`}>
         {routines.length === 0 ? (
           <Empty title="아직 루틴이 없습니다">
-            아래 버튼으로 이 헬스장 기구만 쓰는 루틴을 만드세요.
+            아래 버튼에서 원하는 운동을 골라 첫 루틴을 만들어보세요.
           </Empty>
         ) : (
           <>
@@ -149,7 +172,7 @@ export default function MyGym() {
             )}
             {mine.length > 0 && (
               <>
-                <p className="eyebrow" style={{ margin: '12px 0 8px' }}>내 루틴 · 기구 맞춤</p>
+                <p className="eyebrow" style={{ margin: '12px 0 8px' }}>내 루틴 · 헬스장 맞춤</p>
                 {renderList(mine)}
               </>
             )}
@@ -159,10 +182,9 @@ export default function MyGym() {
           type="button"
           className="btn btn--block"
           style={{ marginTop: 12 }}
-          disabled={busy}
-          onClick={makeAuto}
+          onClick={() => nav('/workout/programs/new')}
         >
-          {busy ? '만드는 중…' : '보유 기구로 새 루틴 짜기'}
+          루틴 짜기
         </button>
       </Card>
 
@@ -182,6 +204,24 @@ export default function MyGym() {
                   <button type="button" className="btn btn--sm" disabled={busy} onClick={() => takeTemplate(t.id)}>
                     가져오기
                   </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {portable?.length > 0 && (
+        <Card title="이전 헬스장 루틴" note="세트·반복은 유지하고 현재 머신에 맞춥니다" flush>
+          <ul className="list">
+            {portable.map((routine) => (
+              <li key={routine.id}>
+                <div className="list__item">
+                  <div className="list__body">
+                    <div className="list__title">{routine.title}</div>
+                    <div className="list__meta">기존 운동 의도를 유지해 자동 대체</div>
+                  </div>
+                  <button type="button" className="btn btn--sm" disabled={busy} onClick={() => moveRoutine(routine.id)}>현재 헬스장에 맞추기</button>
                 </div>
               </li>
             ))}
@@ -236,8 +276,8 @@ export default function MyGym() {
           <li>
             <button type="button" className="list__item" style={{ width: '100%' }} onClick={makeAuto}>
               <div className="list__body">
-                <div className="list__title">기구 기준 루틴</div>
-                <div className="list__meta">이 헬스장에 있는 기구로만 짠 주간 루틴</div>
+                <div className="list__title">내 헬스장 루틴</div>
+                <div className="list__meta">선택한 헬스장 환경에 맞춘 주간 루틴</div>
               </div>
               <div className="list__right">→</div>
             </button>
@@ -271,7 +311,7 @@ export default function MyGym() {
 
       <Note>
         <p className="small">
-          관장이 기구를 바꾸면 <b>기구 맞춤</b> 루틴은 자동으로 다시 짜입니다.
+          헬스장을 옮기거나 머신 구성이 바뀌면 <b>내 루틴</b>을 새 환경에 맞게 조정할 수 있습니다.
           트레이너 숙제·관장 추천은 내용이 그대로 남고, 없는 기구만 경고로 표시합니다.
         </p>
       </Note>

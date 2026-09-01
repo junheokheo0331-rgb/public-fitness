@@ -175,9 +175,19 @@ export function buildRoutine(p) {
 
   // 같은 주에 같은 종목이 과도하게 반복되지 않도록 사용 횟수를 센다
   const used = {};
+  const equipmentPreference = (exercise) => {
+    const requirements = exercise.requires || [];
+    if (requirements.some((value) => value.startsWith('machine_'))) return 30;
+    if (exercise.code === 'CABLE_PULLTHRU' || exercise.code === 'CABLE_PULLTHROUGH_ALT') return -20;
+    if (requirements.some((value) => value.startsWith('cable_'))) return 12;
+    if (requirements.includes('dumbbell')) return 8;
+    if (requirements.includes('barbell')) return 6;
+    return 0;
+  };
   const pick = (pattern) => {
     const cands = (byPattern[pattern] || []).slice()
       .sort((a, b) => (used[a.code] || 0) - (used[b.code] || 0)
+                   || equipmentPreference(b) - equipmentPreference(a)
                    || (b.is_compound - a.is_compound));
     if (!cands.length) return null;
     const chosen = cands[0];
@@ -200,6 +210,10 @@ export function buildRoutine(p) {
       items.push({
         exercise_code: ex.code,
         name: ex.name_ko,
+        pattern: ex.pattern,
+        primary_muscles: ex.primary_muscles || [],
+        laterality: ex.laterality || 'either',
+        is_compound: !!ex.is_compound,
         machine_code: ex.machine_code,
         machine_name: ex.machine_name,
         // 케이블·프리웨이트 종목은 현장에서 얼마든지 변형된다.

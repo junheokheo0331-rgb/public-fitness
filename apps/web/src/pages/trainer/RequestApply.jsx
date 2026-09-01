@@ -4,10 +4,12 @@ import { TopBar, Card, Chip, Field, Note, Empty, won } from '../../ui/bits.jsx';
 import {
   getPtRequest, applyToPtRequest, myTrainerProfile, listApplications,
 } from '../../lib/api.js';
+import { useSession } from '../../lib/session.jsx';
 
 export default function RequestApply() {
   const { requestId } = useParams();
   const nav = useNavigate();
+  const { session } = useSession();
   const [req, setReq] = useState(null);
   const [me, setMe] = useState(null);
   const [applied, setApplied] = useState(false);
@@ -26,7 +28,7 @@ export default function RequestApply() {
       if (!alive) return;
       setReq(r);
       setMe(profile);
-      const mine = apps.find((a) => a.trainer_id === 'u-trainer');
+      const mine = apps.find((a) => a.trainer_id === session.id);
       setApplied(!!mine);
       if (profile && r) {
         setPrice(String(profile.price_per_session * r.sessions));
@@ -36,7 +38,7 @@ export default function RequestApply() {
       }
     })();
     return () => { alive = false; };
-  }, [requestId]);
+  }, [requestId, session.id]);
 
   const submit = async (e) => {
     e.preventDefault();

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { CONSENT_KINDS } from '@gymlink/core/constants';
-import { TopBar, Card, Chip, Note } from '../ui/bits.jsx';
+import { TopBar, Card, Chip, Note, won } from '../ui/bits.jsx';
 import { useSession, ROLE_LABEL } from '../lib/session.jsx';
-import { getConsents, grantConsent, revokeConsent, IS_MOCK } from '../lib/api.js';
+import { getConsents, grantConsent, revokeConsent, myPaymentOrders, IS_MOCK } from '../lib/api.js';
+import { useWorkout } from '../lib/workout/WorkoutContext.jsx';
 
 /* 내 정보 — 실질적으로는 동의 관리 화면이다.
 
@@ -11,11 +12,33 @@ import { getConsents, grantConsent, revokeConsent, IS_MOCK } from '../lib/api.js
 
 export default function Me() {
   const { session, signOut } = useSession();
+  const { store } = useWorkout();
   const [consents, setConsents] = useState(null);
+  const [orders, setOrders] = useState(null);
   const [busy, setBusy] = useState(null);
   const [flash, setFlash] = useState(null);
 
-  useEffect(() => { getConsents().then(setConsents); }, []);
+  useEffect(() => {
+    getConsents().then(setConsents);
+    myPaymentOrders().then(setOrders).catch(() => setOrders([]));
+  }, []);
+
+  function downloadMyData() {
+    const payload = {
+      exported_at: new Date().toISOString(),
+      profile: { id: session.id, name: session.name, email: session.email || '', role: session.role },
+      consents: consents || {},
+      payment_orders: orders || [],
+      workout: store.exportJSON(),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gymlink-data-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   async function toggle(kind, on) {
     setBusy(kind);
@@ -83,14 +106,33 @@ export default function Me() {
         </Note>
       </Card>
 
+      {session.role === 'member' && (
+        <Card title="결제 내역" note={orders ? `${orders.length}건` : '불러오는 중…'}>
+          {orders?.length === 0 && <p className="small muted">아직 앱에서 결제한 내역이 없습니다.</p>}
+          {(orders || []).map((order) => (
+            <div key={order.id} className="row row--between payment-row">
+              <div className="grow">
+                <strong className="small">{order.order_name || order.price_plans?.name || '이용권'}</strong>
+                <p className="tiny muted" style={{ marginTop: 3 }}>{order.gyms?.name || ''} · {new Date(order.created_at).toLocaleDateString('ko-KR')}</p>
+              </div>
+              <div className="right"><strong className="small">{won(order.amount)}</strong><div><Chip kind={order.status === 'paid' ? 'go' : undefined}>{order.status === 'paid' ? '결제 완료' : order.status === 'cancelled' ? '취소' : '결제 대기'}</Chip></div></div>
+            </div>
+          ))}
+        </Card>
+      )}
+
       <Card title="내 정보 내려받기">
         <p className="small muted">
           저장된 기록 전부를 파일로 받을 수 있습니다. 회원 탈퇴 시에는 전부 삭제됩니다.
         </p>
-        <button className="btn btn--ghost btn--block btn--sm" style={{ marginTop: 10 }}>
+        <button className="btn btn--ghost btn--block btn--sm" style={{ marginTop: 10 }} onClick={downloadMyData}>
           내 데이터 내려받기
         </button>
       </Card>
+
+      <p className="tiny muted" style={{ textAlign: 'center', margin: '14px 0' }}>
+        기본 운동 그림: <a href="https://github.com/bryllim/workout-guide" target="_blank" rel="noreferrer">Workout Guide</a> · CC BY-SA 4.0
+      </p>
 
       <button className="btn btn--ghost btn--block" onClick={signOut}>로그아웃</button>
 

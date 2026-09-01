@@ -1,3 +1,5 @@
+import { EXTRA_MACHINES, EXTRA_EXERCISES, MACHINE_BRANDS } from './catalog-expansion.js';
+
 /* ============================================================
    catalog.js — 기구·종목 표준 목록 (db/04_seed.sql 에서 추출)
 
@@ -10,7 +12,7 @@
    덤벨 하나면 14종목, 조절식 벤치를 더하면 더 열린다.
    ============================================================ */
 
-export const MACHINES = [
+const BASE_MACHINES = [
   {"code": "POWER_RACK", "name": "파워랙", "category": "rack", "provides": ["squat_rack", "bench_press_rack", "pullup_bar"], "generative": true, "step": 2.5},
   {"code": "HALF_RACK", "name": "하프랙", "category": "rack", "provides": ["squat_rack", "bench_press_rack"], "generative": true, "step": 2.5},
   {"code": "SMITH", "name": "스미스 머신", "category": "rack", "provides": ["smith", "squat_rack"], "generative": true, "step": 5.0},
@@ -18,7 +20,7 @@ export const MACHINES = [
   {"code": "DIP_STATION", "name": "딥스 스테이션", "category": "rack", "provides": ["dip_bar", "pullup_bar"], "generative": true, "step": null},
   {"code": "BENCH_FLAT", "name": "플랫 벤치", "category": "bench", "provides": ["bench_flat"], "generative": false, "step": null},
   {"code": "BENCH_ADJ", "name": "조절식 벤치", "category": "bench", "provides": ["bench_flat", "bench_incline", "bench_decline"], "generative": true, "step": null},
-  {"code": "BARBELL", "name": "바벨 + 원판", "category": "free", "provides": ["barbell"], "generative": true, "step": 5.0},
+  {"code": "BARBELL", "name": "올림픽 바벨", "category": "free", "provides": ["barbell"], "generative": true, "step": 5.0},
   {"code": "PLATE_SMALL", "name": "소형 원판 (1~2.5kg)", "category": "free", "provides": ["plates_small"], "generative": false, "step": 1.25},
   {"code": "EZ_BAR", "name": "EZ 바", "category": "free", "provides": ["ez_bar"], "generative": true, "step": 2.5},
   {"code": "TRAP_BAR", "name": "트랩바", "category": "free", "provides": ["trap_bar"], "generative": true, "step": 5.0},
@@ -57,7 +59,7 @@ export const MACHINES = [
   {"code": "SLED", "name": "슬레드 · 푸시썰매", "category": "etc", "provides": ["sled"], "generative": true, "step": 5.0},
 ];
 
-export const EXERCISES = [
+const BASE_EXERCISES = [
   {"code": "AB_MACHINE_EX", "name_ko": "복근 머신", "pattern": "core", "requires": ["machine_ab"], "freeform": false, "setup": null, "compound": false, "level": 1, "avoid": ["low_back"]},
   {"code": "AB_WHEEL", "name_ko": "앱 롤아웃", "pattern": "core", "requires": ["floor_mat"], "freeform": true, "setup": null, "compound": false, "level": 3, "avoid": ["low_back"]},
   {"code": "ASSISTED_PULLUP", "name_ko": "어시스트 턱걸이", "pattern": "vertical_pull", "requires": ["machine_assisted_pullup"], "freeform": false, "setup": null, "compound": true, "level": 1, "avoid": ["shoulder"]},
@@ -79,7 +81,7 @@ export const EXERCISES = [
   {"code": "CABLE_FLY", "name_ko": "케이블 플라이", "pattern": "horizontal_adduction", "requires": ["cable_dual"], "freeform": true, "setup": "높이를 바꾸면 상·중·하 가슴", "compound": false, "level": 1, "avoid": ["shoulder"]},
   {"code": "CABLE_FLY_LOW", "name_ko": "로우 케이블 플라이", "pattern": "horizontal_adduction", "requires": ["cable_low", "cable_dual"], "freeform": true, "setup": "아래에서 위로", "compound": false, "level": 1, "avoid": ["shoulder"]},
   {"code": "CABLE_LATERAL", "name_ko": "케이블 래터럴", "pattern": "abduction", "requires": ["cable_low"], "freeform": true, "setup": "덤벨보다 자극이 고르다", "compound": false, "level": 1, "avoid": ["shoulder"]},
-  {"code": "CABLE_PULLTHRU", "name_ko": "케이블 풀스루", "pattern": "hinge", "requires": ["cable_low"], "freeform": true, "setup": null, "compound": true, "level": 1, "avoid": []},
+  {"code": "CABLE_PULLTHRU", "name_ko": "케이블 힙 힌지", "pattern": "hinge", "requires": ["cable_low"], "freeform": true, "setup": "둔근 보조 힙힌지", "compound": false, "level": 1, "avoid": []},
   {"code": "CABLE_REAR_FLY", "name_ko": "케이블 리어 플라이", "pattern": "horizontal_abduction", "requires": ["cable_dual"], "freeform": true, "setup": null, "compound": false, "level": 1, "avoid": []},
   {"code": "CALF_MACH_EX", "name_ko": "카프 레이즈 머신", "pattern": "plantarflexion", "requires": ["machine_calf"], "freeform": false, "setup": null, "compound": false, "level": 1, "avoid": []},
   {"code": "CHEST_PRESS_M", "name_ko": "체스트 프레스", "pattern": "horizontal_push", "requires": ["machine_chest_press"], "freeform": false, "setup": null, "compound": true, "level": 1, "avoid": []},
@@ -118,7 +120,7 @@ export const EXERCISES = [
   {"code": "LANDMINE_PRESS", "name_ko": "랜드마인 프레스", "pattern": "vertical_push", "requires": ["landmine"], "freeform": true, "setup": "어깨가 불편할 때 대안", "compound": true, "level": 2, "avoid": []},
   {"code": "LANDMINE_ROW", "name_ko": "랜드마인 로우", "pattern": "horizontal_pull", "requires": ["landmine"], "freeform": true, "setup": null, "compound": true, "level": 2, "avoid": ["low_back"]},
   {"code": "LAT_PULLDOWN_N", "name_ko": "뉴트럴 랫풀다운", "pattern": "vertical_pull", "requires": ["cable_high"], "freeform": true, "setup": "평행 그립 핸들", "compound": true, "level": 1, "avoid": []},
-  {"code": "LAT_PULLDOWN_W", "name_ko": "랫풀다운", "pattern": "vertical_pull", "requires": ["cable_high"], "freeform": true, "setup": "와이드·클로즈·언더 다 가능", "compound": true, "level": 1, "avoid": ["shoulder"]},
+  {"code": "LAT_PULLDOWN_W", "name_ko": "케이블 랫 풀다운", "pattern": "vertical_pull", "requires": ["cable_high"], "freeform": true, "setup": "와이드·클로즈·언더 그립", "compound": true, "level": 1, "avoid": ["shoulder"], "primary_muscles": ["광배근", "이두"]},
   {"code": "LEG_CURL_EX", "name_ko": "레그 컬", "pattern": "flexion", "requires": ["machine_leg_curl"], "freeform": false, "setup": null, "compound": false, "level": 1, "avoid": []},
   {"code": "LEG_EXT_EX", "name_ko": "레그 익스텐션", "pattern": "extension", "requires": ["machine_leg_ext"], "freeform": false, "setup": null, "compound": false, "level": 1, "avoid": ["knee"]},
   {"code": "LEG_PRESS_EX", "name_ko": "레그프레스", "pattern": "squat", "requires": ["machine_leg_press"], "freeform": false, "setup": "발 위치로 자극 조절", "compound": true, "level": 1, "avoid": ["knee"]},
@@ -154,6 +156,10 @@ export const EXERCISES = [
   {"code": "ZONE2_TM", "name_ko": "트레드밀", "pattern": "cardio", "requires": ["treadmill"], "freeform": false, "setup": null, "compound": false, "level": 1, "avoid": []},
 ];
 
+export const MACHINES = [...BASE_MACHINES, ...EXTRA_MACHINES];
+export const EXERCISES = [...BASE_EXERCISES, ...EXTRA_EXERCISES];
+export { MACHINE_BRANDS };
+
 
 /** 보유 기구 코드 목록 → 역량 집합 */
 export function capabilitiesOf(machineCodes) {
@@ -183,6 +189,7 @@ export function availableFor(machineCodes, level = 3) {
       const lead = byCap.get(e.requires[0]);
       return {
         code: e.code, name_ko: e.name_ko, pattern: e.pattern,
+        primary_muscles: e.primary_muscles || [], laterality: e.laterality || 'either',
         is_compound: e.compound, skill_level: e.level,
         requires: e.requires, is_freeform: e.freeform, setup_note: e.setup,
         machine_code: lead?.code ?? null, machine_name: lead?.name ?? null,

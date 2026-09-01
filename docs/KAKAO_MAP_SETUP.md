@@ -5,9 +5,10 @@ GymLink는 키가 없을 때 거리 비교형 대체 화면을 보여주고, Jav
 ## 1. 카카오 앱 설정
 
 1. [카카오디벨로퍼스](https://developers.kakao.com/)에서 앱을 만든다.
-2. **앱 → 플랫폼 키 → JavaScript 키**로 이동한다.
-3. REST API 키나 어드민 키가 아닌 **JavaScript 키**를 복사한다.
-4. 같은 화면의 **JavaScript SDK 도메인**에 아래 주소를 등록한다.
+2. **카카오맵 → 사용 설정**에서 카카오맵 API를 `ON`으로 활성화한다.
+3. **앱 → 플랫폼 키 → JavaScript 키**로 이동한다.
+4. REST API 키나 어드민 키가 아닌 **JavaScript 키**를 복사한다.
+5. 같은 화면의 **JavaScript SDK 도메인**에 아래 주소를 등록한다.
 
 ```text
 http://localhost:5173

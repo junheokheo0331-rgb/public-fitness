@@ -5,15 +5,18 @@ import { hasKakaoMapKey, loadKakaoMaps } from '../lib/location.js';
 export default function GymMap({ gyms, origin }) {
   const host = useRef(null);
   const nav = useNavigate();
-  const [failed, setFailed] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [retry, setRetry] = useState(0);
+  const mappedGyms = gyms.filter((gym) => gym.lat != null && gym.lng != null
+    && Number.isFinite(Number(gym.lat)) && Number.isFinite(Number(gym.lng)));
 
   useEffect(() => {
-    if (!hasKakaoMapKey() || !host.current || !gyms.length) return undefined;
+    if (!hasKakaoMapKey() || !host.current || !mappedGyms.length) return undefined;
     let active = true;
-    setFailed(false);
+    setLoadError('');
     loadKakaoMaps().then((kakao) => {
       if (!active || !host.current) return;
-      const first = origin ?? gyms.find((g) => g.lat && g.lng) ?? gyms[0];
+      const first = origin ?? mappedGyms[0];
       const map = new kakao.maps.Map(host.current, {
         center: new kakao.maps.LatLng(first.lat, first.lng), level: 5,
       });
@@ -24,19 +27,24 @@ export default function GymMap({ gyms, origin }) {
         marker.setZIndex(10);
         bounds.extend(here);
       }
-      gyms.filter((g) => g.lat && g.lng).forEach((gym) => {
+      mappedGyms.forEach((gym) => {
         const pos = new kakao.maps.LatLng(gym.lat, gym.lng);
         const marker = new kakao.maps.Marker({ position: pos, map, title: gym.name });
         kakao.maps.event.addListener(marker, 'click', () => nav(`/gym/${gym.id}`));
         bounds.extend(pos);
       });
       map.setBounds(bounds, 36, 36, 36, 36);
-    }).catch(() => setFailed(true));
+    }).catch((error) => setLoadError(error?.message || 'KAKAO_LOAD_FAILED'));
     return () => { active = false; };
-  }, [gyms, nav, origin]);
+  }, [gyms, mappedGyms.length, nav, origin, retry]);
 
-  if (!hasKakaoMapKey() || failed) {
+  if (!hasKakaoMapKey() || loadError || !mappedGyms.length) {
     const max = Math.max(...gyms.map((g) => g.distance_m || 1), 1);
+    const hint = !hasKakaoMapKey()
+      ? '카카오 JavaScript 키가 연결되지 않았습니다.'
+      : !mappedGyms.length
+        ? '지도에 표시할 헬스장 좌표가 없습니다.'
+        : '카카오맵 사용 설정과 JavaScript SDK 도메인을 확인해주세요.';
     return (
       <div className="map-fallback" aria-label="헬스장 거리 비교">
         <span className="map-fallback__you">{origin?.mode === 'home' ? '우리 집' : origin ? '현재 위치' : '기준 위치'}</span>
@@ -56,7 +64,15 @@ export default function GymMap({ gyms, origin }) {
             <small>{gym.name.replace(/헬스클럽|스트렝스짐|바디랩/g, '')}</small>
           </button>
         ))}
-        <p className="map-fallback__hint">카카오 키 연결 전 거리 데모</p>
+        <div className="map-fallback__status" role={loadError ? 'alert' : undefined}>
+          <p>{hint}</p>
+          {loadError && <code className="map-fallback__error-code">{loadError}</code>}
+          {loadError && (
+            <button type="button" className="map-fallback__retry" onClick={() => { setLoadError(''); setRetry((value) => value + 1); }}>
+              지도 다시 불러오기
+            </button>
+          )}
+        </div>
       </div>
     );
   }

@@ -106,6 +106,16 @@ const { error: activeGymError } = await member.rpc('set_active_gym', { p_gym_id:
 console.log(`active-gym ${activeGymError ? `FAIL ${activeGymError.code}` : 'OK'}`);
 failed ||= Boolean(activeGymError);
 
+const { data: nearbyGyms, error: nearbyGymError } = await member.rpc('search_gyms', {
+  p_lat: 35.1578,
+  p_lng: 129.0594,
+  p_radius_m: 5000,
+  p_sort: 'distance',
+});
+const nearbyGymOk = !nearbyGymError && nearbyGyms?.some((gym) => gym.id === demoGym.id);
+console.log(`map-search ${nearbyGymOk ? `OK ${nearbyGyms.length} gym(s)` : `FAIL ${nearbyGymError?.code || 'demo-gym-missing'}`}`);
+failed ||= !nearbyGymOk;
+
 const { data: booking, error: bookingReadError } = await member.from('bookings').select('id').eq('member_id', profiles.member.id).limit(1).maybeSingle();
 let bookingFlowError = bookingReadError;
 if (booking && !bookingFlowError) {

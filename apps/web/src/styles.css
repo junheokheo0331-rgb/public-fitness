@@ -628,7 +628,17 @@ button.chip {
   box-shadow: 0 5px 12px rgba(11,79,138,.25);
 }
 .map-pin > small { padding: 2px 5px; border-radius: 5px; background: rgba(255,255,255,.9); font-size: 10px; white-space: nowrap; }
-.map-fallback__hint { position: absolute; z-index: 2; right: 8px; bottom: 5px; margin: 0; font-size: 9.5px; color: var(--ink-3); }
+.map-fallback__status {
+  position: absolute; z-index: 4; right: 9px; bottom: 8px; max-width: 72%; padding: 7px 9px;
+  border: 1px solid rgba(255,255,255,.9); border-radius: 10px; background: rgba(255,255,255,.9);
+  box-shadow: 0 5px 15px rgba(15,23,42,.08); text-align: right;
+}
+.map-fallback__status p { margin: 0; font-size: 10px; line-height: 1.35; color: var(--ink-2); }
+.map-fallback__error-code { display: block; margin-top: 4px; color: #B42318; font: 700 9px var(--mono); }
+.map-fallback__retry {
+  margin-top: 5px; padding: 4px 7px; border: 0; border-radius: 7px; background: var(--ink);
+  color: #fff; font-size: 10px; font-weight: 750; cursor: pointer;
+}
 .result-rank {
   flex: none; width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center;
   background: var(--volt-bg); color: var(--volt-ink); font: 700 11px var(--mono);
